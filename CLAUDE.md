@@ -32,13 +32,13 @@ Plus `CANCELLED` and `NEEDS_HUMAN`, reachable from any active state.
 
 ## Stack
 
-| Layer | Choice |
-| --- | --- |
-| Frontend / API | Next.js (App Router, TypeScript, Tailwind) on Vercel |
-| Database / Auth / Storage | Supabase (Postgres, private Storage buckets) |
-| WhatsApp orchestration | n8n (thin — no business logic) |
-| AI | Claude API (conversation agent + document extraction) |
-| Messaging | WhatsApp Business Cloud API (Meta) |
+| Layer                     | Choice                                                |
+| ------------------------- | ----------------------------------------------------- |
+| Frontend / API            | Next.js (App Router, TypeScript, Tailwind) on Vercel  |
+| Database / Auth / Storage | Supabase (Postgres, private Storage buckets)          |
+| WhatsApp orchestration    | n8n (thin — no business logic)                        |
+| AI                        | Claude API (conversation agent + document extraction) |
+| Messaging                 | WhatsApp Business Cloud API (Meta)                    |
 
 ## Open questions — update this file when the rental company answers
 
@@ -50,7 +50,17 @@ Plus `CANCELLED` and `NEEDS_HUMAN`, reachable from any active state.
 
 ## Environment variables
 
-See `.env.example`.
+See `.env.example`. Validate with `requireEnv` from `lib/env.ts`. Use the service-role
+client (`lib/supabase/server.ts`) only on the server.
+
+## Commands
+
+`npm test`, `npm run lint`, `npm run typecheck`, `npm run format:check`. All must pass
+before a component counts as done.
+
+## Next.js version
+
+@AGENTS.md
 
 ## How to use this repo
 

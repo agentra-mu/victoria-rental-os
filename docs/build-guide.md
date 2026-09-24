@@ -8,10 +8,10 @@ owner dashboard. The database is the source of truth; the AI is only the interfa
 never invents prices, decides availability, marks payments as paid, or auto-rejects a
 customer. Anything uncertain goes to the owner.
 
-| Build | Purpose | Scope |
-| --- | --- | --- |
-| Build 1 — Trial / MVP | Prove bookings can come through WhatsApp without the owner handling every enquiry | FAQ, fleet display, car selection, dates, locations, booking summary, document upload + basic verification, cash-payment instructions, human escalation, simple dashboard |
-| Build 2 — Production (paid) | Run the whole operation | Physical vehicle assignment, availability engine, locations, calendar, conversation inbox + takeover, delays and extensions, automated reminders, analytics, audit logs, staff roles |
+| Build                       | Purpose                                                                           | Scope                                                                                                                                                                                |
+| --------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Build 1 — Trial / MVP       | Prove bookings can come through WhatsApp without the owner handling every enquiry | FAQ, fleet display, car selection, dates, locations, booking summary, document upload + basic verification, cash-payment instructions, human escalation, simple dashboard            |
+| Build 2 — Production (paid) | Run the whole operation                                                           | Physical vehicle assignment, availability engine, locations, calendar, conversation inbox + takeover, delays and extensions, automated reminders, analytics, audit logs, staff roles |
 
 **Stack:** Next.js on Vercel (dashboard, upload page, API) · Supabase (Postgres, Auth,
 private Storage) · n8n (WhatsApp orchestration) · Claude API (conversation agent and
@@ -521,14 +521,14 @@ Read CLAUDE.md and the full codebase. Prepare for a pilot launch with the rental
 
 ### Order to run the prompts
 
-| Phase | Components | Result |
-| --- | --- | --- |
-| Foundation | 0 → 1 → 2 → 3 | Project, database, booking engine, knowledge base |
-| See the data | 10 | Basic dashboard to inspect what the bot creates |
-| WhatsApp + AI | 4 → 5 → 6 | Messages flow; the agent books and remembers customers |
-| Documents + payment | 7 → 8 → 9 | Upload, verification, cash instructions |
-| Control + safety | 11 → 12 → 20 | Takeover, hardening, launch — Build 1 complete |
-| Build 2 | 13 → 14 → 16 → 15 → 17 → 18 → 19 | Fleet, calendar, requests, inbox, reminders, analytics, roles |
+| Phase               | Components                       | Result                                                        |
+| ------------------- | -------------------------------- | ------------------------------------------------------------- |
+| Foundation          | 0 → 1 → 2 → 3                    | Project, database, booking engine, knowledge base             |
+| See the data        | 10                               | Basic dashboard to inspect what the bot creates               |
+| WhatsApp + AI       | 4 → 5 → 6                        | Messages flow; the agent books and remembers customers        |
+| Documents + payment | 7 → 8 → 9                        | Upload, verification, cash instructions                       |
+| Control + safety    | 11 → 12 → 20                     | Takeover, hardening, launch — Build 1 complete                |
+| Build 2             | 13 → 14 → 16 → 15 → 17 → 18 → 19 | Fleet, calendar, requests, inbox, reminders, analytics, roles |
 
 ### Open questions for the rental company
 

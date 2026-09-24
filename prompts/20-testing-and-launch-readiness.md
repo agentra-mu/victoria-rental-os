@@ -2,14 +2,14 @@
 
 ### Order to run the prompts
 
-| Phase | Components | Result |
-| --- | --- | --- |
-| Foundation | 0 → 1 → 2 → 3 | Project, database, booking engine, knowledge base |
-| See the data | 10 | Basic dashboard to inspect what the bot creates |
-| WhatsApp + AI | 4 → 5 → 6 | Messages flow; the agent books and remembers customers |
-| Documents + payment | 7 → 8 → 9 | Upload, verification, cash instructions |
-| Control + safety | 11 → 12 → 20 | Takeover, hardening, launch — Build 1 complete |
-| Build 2 | 13 → 14 → 16 → 15 → 17 → 18 → 19 | Fleet, calendar, requests, inbox, reminders, analytics, roles |
+| Phase               | Components                       | Result                                                        |
+| ------------------- | -------------------------------- | ------------------------------------------------------------- |
+| Foundation          | 0 → 1 → 2 → 3                    | Project, database, booking engine, knowledge base             |
+| See the data        | 10                               | Basic dashboard to inspect what the bot creates               |
+| WhatsApp + AI       | 4 → 5 → 6                        | Messages flow; the agent books and remembers customers        |
+| Documents + payment | 7 → 8 → 9                        | Upload, verification, cash instructions                       |
+| Control + safety    | 11 → 12 → 20                     | Takeover, hardening, launch — Build 1 complete                |
+| Build 2             | 13 → 14 → 16 → 15 → 17 → 18 → 19 | Fleet, calendar, requests, inbox, reminders, analytics, roles |
 
 ### Open questions for the rental company
 
