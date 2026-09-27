@@ -354,6 +354,7 @@ export type Database = {
           answer: string
           id: string
           question: string
+          search_vector: unknown
           topic: string
           updated_at: string
         }
@@ -362,6 +363,7 @@ export type Database = {
           answer: string
           id?: string
           question: string
+          search_vector?: unknown
           topic: string
           updated_at?: string
         }
@@ -370,6 +372,7 @@ export type Database = {
           answer?: string
           id?: string
           question?: string
+          search_vector?: unknown
           topic?: string
           updated_at?: string
         }

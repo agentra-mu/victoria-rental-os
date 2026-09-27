@@ -3,8 +3,10 @@ import type {
   BookingPatch,
   BookingRow,
   DomainDb,
+  KnowledgeBaseEntryRow,
   LocationRow,
   OverlapFilter,
+  VehicleCategoryRow,
   VehicleRow,
 } from "../ports";
 
@@ -17,8 +19,10 @@ const EXCLUDED_FROM_CONSTRAINT = new Set(["CANCELLED", "ENQUIRY"]);
 
 export interface FakeDbSeed {
   vehicles?: VehicleRow[];
+  vehicleCategories?: VehicleCategoryRow[];
   locations?: LocationRow[];
   bookings?: BookingRow[];
+  knowledgeBase?: KnowledgeBaseEntryRow[];
 }
 
 let bookingCounter = 1000;
@@ -32,8 +36,14 @@ let bookingCounter = 1000;
  */
 export function createFakeDb(seed: FakeDbSeed = {}) {
   const vehicles = new Map(seed.vehicles?.map((v) => [v.id, v]) ?? []);
+  const vehicleCategories = new Map(
+    seed.vehicleCategories?.map((c) => [c.id, c]) ?? [],
+  );
   const locations = new Map(seed.locations?.map((l) => [l.id, l]) ?? []);
   const bookings = new Map(seed.bookings?.map((b) => [b.id, b]) ?? []);
+  const knowledgeBase = new Map(
+    seed.knowledgeBase?.map((k) => [k.id, k]) ?? [],
+  );
   const events: BookingEventInput[] = [];
 
   const db: DomainDb = {
@@ -50,6 +60,10 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
 
     async getVehicleById(id) {
       return vehicles.get(id) ?? null;
+    },
+
+    async listVehicleCategories() {
+      return Array.from(vehicleCategories.values());
     },
 
     async getLocationById(id) {
@@ -147,7 +161,38 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
     async recordEvent(event) {
       events.push(event);
     },
+
+    async searchKnowledgeBase(query, limit) {
+      const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+      const scored = Array.from(knowledgeBase.values())
+        .map((entry) => {
+          const topicAndQuestion =
+            `${entry.topic} ${entry.question}`.toLowerCase();
+          const answer = entry.answer.toLowerCase();
+          let score = 0;
+          for (const term of terms) {
+            if (topicAndQuestion.includes(term)) score += 2;
+            if (answer.includes(term)) score += 1;
+          }
+          return { entry, score };
+        })
+        .filter((row) => row.score > 0)
+        .sort((a, b) => b.score - a.score);
+      return scored.slice(0, limit).map((row) => row.entry);
+    },
+
+    async listActiveKnowledgeBase() {
+      return Array.from(knowledgeBase.values());
+    },
   };
 
-  return { db, vehicles, locations, bookings, events };
+  return {
+    db,
+    vehicles,
+    vehicleCategories,
+    locations,
+    bookings,
+    knowledgeBase,
+    events,
+  };
 }

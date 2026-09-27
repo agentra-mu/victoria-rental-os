@@ -15,6 +15,22 @@ export interface VehicleRow {
   dailyPriceRs: number;
   homeLocationId: string | null;
   status: VehicleStatus;
+  transmission: string | null;
+  seats: number | null;
+  photoUrl: string | null;
+}
+
+export interface VehicleCategoryRow {
+  id: string;
+  name: string;
+}
+
+export interface KnowledgeBaseEntryRow {
+  id: string;
+  topic: string;
+  question: string;
+  answer: string;
+  updatedAt: string;
 }
 
 export interface LocationRow {
@@ -91,6 +107,7 @@ export interface DomainDb {
     homeLocationId?: string;
   }): Promise<VehicleRow[]>;
   getVehicleById(id: string): Promise<VehicleRow | null>;
+  listVehicleCategories(): Promise<VehicleCategoryRow[]>;
   getLocationById(id: string): Promise<LocationRow | null>;
   /** Subset of the given vehicle ids that have a conflicting active booking. */
   findOverlappingVehicleIds(filter: OverlapFilter): Promise<Set<string>>;
@@ -98,4 +115,10 @@ export interface DomainDb {
   createBooking(customerId: string): Promise<BookingRow>;
   updateBooking(id: string, patch: BookingPatch): Promise<BookingRow>;
   recordEvent(event: BookingEventInput): Promise<void>;
+  /** Full-text search over active knowledge_base entries, best matches first. */
+  searchKnowledgeBase(
+    query: string,
+    limit: number,
+  ): Promise<KnowledgeBaseEntryRow[]>;
+  listActiveKnowledgeBase(): Promise<KnowledgeBaseEntryRow[]>;
 }

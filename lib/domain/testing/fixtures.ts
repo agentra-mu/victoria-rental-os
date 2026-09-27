@@ -1,4 +1,10 @@
-import type { BookingRow, LocationRow, VehicleRow } from "../ports";
+import type {
+  BookingRow,
+  KnowledgeBaseEntryRow,
+  LocationRow,
+  VehicleCategoryRow,
+  VehicleRow,
+} from "../ports";
 
 export function vehicle(
   overrides: Partial<VehicleRow> & { id: string },
@@ -11,6 +17,30 @@ export function vehicle(
     dailyPriceRs: 1200,
     homeLocationId: null,
     status: "ACTIVE",
+    transmission: "Manual",
+    seats: 5,
+    photoUrl: null,
+    ...overrides,
+  };
+}
+
+export function vehicleCategory(
+  overrides: Partial<VehicleCategoryRow> & { id: string },
+): VehicleCategoryRow {
+  return {
+    name: `Category ${overrides.id}`,
+    ...overrides,
+  };
+}
+
+export function knowledgeBaseEntry(
+  overrides: Partial<KnowledgeBaseEntryRow> & { id: string },
+): KnowledgeBaseEntryRow {
+  return {
+    topic: "general",
+    question: `Question ${overrides.id}`,
+    answer: `Answer ${overrides.id}`,
+    updatedAt: "2026-01-01T00:00:00Z",
     ...overrides,
   };
 }

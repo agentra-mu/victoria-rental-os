@@ -6,16 +6,22 @@ import type {
   BookingPatch,
   BookingRow,
   DomainDb,
+  KnowledgeBaseEntryRow,
   LocationRow,
   OverlapFilter,
+  VehicleCategoryRow,
   VehicleRow,
 } from "@/lib/domain/ports";
 
 type Client = SupabaseClient<Database>;
 type VehicleTableRow = Database["public"]["Tables"]["vehicles"]["Row"];
+type VehicleCategoryTableRow =
+  Database["public"]["Tables"]["vehicle_categories"]["Row"];
 type LocationTableRow = Database["public"]["Tables"]["locations"]["Row"];
 type BookingTableRow = Database["public"]["Tables"]["bookings"]["Row"];
 type BookingTableUpdate = Database["public"]["Tables"]["bookings"]["Update"];
+type KnowledgeBaseTableRow =
+  Database["public"]["Tables"]["knowledge_base"]["Row"];
 
 function mapVehicle(row: VehicleTableRow): VehicleRow {
   return {
@@ -27,6 +33,25 @@ function mapVehicle(row: VehicleTableRow): VehicleRow {
     dailyPriceRs: row.daily_price_rs,
     homeLocationId: row.home_location_id,
     status: row.status,
+    transmission: row.transmission,
+    seats: row.seats,
+    photoUrl: row.photo_url,
+  };
+}
+
+function mapVehicleCategory(row: VehicleCategoryTableRow): VehicleCategoryRow {
+  return { id: row.id, name: row.name };
+}
+
+function mapKnowledgeBaseEntry(
+  row: KnowledgeBaseTableRow,
+): KnowledgeBaseEntryRow {
+  return {
+    id: row.id,
+    topic: row.topic,
+    question: row.question,
+    answer: row.answer,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -113,6 +138,14 @@ export function createSupabaseDomainDb(client: Client): DomainDb {
       return data ? mapVehicle(data) : null;
     },
 
+    async listVehicleCategories() {
+      const { data, error } = await client
+        .from("vehicle_categories")
+        .select("*");
+      if (error) throw error;
+      return (data ?? []).map(mapVehicleCategory);
+    },
+
     async getLocationById(id) {
       const { data, error } = await client
         .from("locations")
@@ -191,6 +224,33 @@ export function createSupabaseDomainDb(client: Client): DomainDb {
         payload: (event.payload ?? null) as Json,
       });
       if (error) throw error;
+    },
+
+    async searchKnowledgeBase(query, limit) {
+      // search_vector is generated (topic/question weighted above answer text —
+      // see the knowledge_base_search migration). websearch_to_tsquery handles
+      // plain natural-language queries without the caller needing tsquery syntax.
+      const { data, error } = await client
+        .from("knowledge_base")
+        .select("*")
+        .eq("active", true)
+        .textSearch("search_vector", query, {
+          type: "websearch",
+          config: "english",
+        })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []).map(mapKnowledgeBaseEntry);
+    },
+
+    async listActiveKnowledgeBase() {
+      const { data, error } = await client
+        .from("knowledge_base")
+        .select("*")
+        .eq("active", true)
+        .order("topic");
+      if (error) throw error;
+      return (data ?? []).map(mapKnowledgeBaseEntry);
     },
   };
 }
