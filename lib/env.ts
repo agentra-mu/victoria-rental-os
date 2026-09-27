@@ -15,6 +15,7 @@ export const SERVER_ENV_KEYS = [
   "WHATSAPP_VERIFY_TOKEN",
   "OWNER_WHATSAPP_NUMBER",
   "INTERNAL_API_SECRET",
+  "APP_URL",
 ] as const;
 
 export type ServerEnvKey = (typeof SERVER_ENV_KEYS)[number];

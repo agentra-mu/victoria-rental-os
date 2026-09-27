@@ -9,7 +9,8 @@ import { getServiceSupabase } from "@/lib/supabase/server";
 import { createSupabaseDomainDb } from "@/lib/db/domainDb";
 import { createSupabaseMessagingDb } from "@/lib/db/messagingDb";
 import { escalateBookingToHuman } from "@/lib/domain/escalateBookingToHuman";
-import { runAgent } from "@/lib/whatsapp/agent";
+import { createAnthropicModelClient } from "@/lib/agent/client";
+import { runAgentTurn } from "@/lib/agent/runAgent";
 import { handleInboundMessage, type InboundDeps } from "@/lib/whatsapp/inbound";
 
 const bodySchema = z.object({
@@ -44,14 +45,20 @@ export async function POST(request: Request) {
 
     const client = getServiceSupabase();
     const bookingDb = createSupabaseDomainDb(client);
+    const messagingDb = createSupabaseMessagingDb(client);
+    const model = createAnthropicModelClient();
     const deps: InboundDeps = {
-      messaging: createSupabaseMessagingDb(client),
+      messaging: messagingDb,
       getActiveBookingForCustomer: (customerId) =>
         bookingDb.getActiveBookingForCustomer(customerId),
       escalateBookingToHuman: async (bookingId) => {
         await escalateBookingToHuman(bookingDb, bookingId);
       },
-      runAgent,
+      runAgent: (conversationId) =>
+        runAgentTurn(
+          { domainDb: bookingDb, messaging: messagingDb, model },
+          conversationId,
+        ),
     };
 
     const result = await handleInboundMessage(deps, payload);

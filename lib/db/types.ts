@@ -694,6 +694,7 @@ export type Database = {
         | "NEEDS_HUMAN"
         | "DOC_REVIEW"
         | "CASH_ISSUE"
+        | "OTHER"
       payment_method: "CASH"
       payment_status: "UNPAID" | "PAID" | "REFUNDED"
       staff_role: "OWNER" | "STAFF"
@@ -859,6 +860,7 @@ export const Constants = {
         "NEEDS_HUMAN",
         "DOC_REVIEW",
         "CASH_ISSUE",
+        "OTHER",
       ],
       payment_method: ["CASH"],
       payment_status: ["UNPAID", "PAID", "REFUNDED"],

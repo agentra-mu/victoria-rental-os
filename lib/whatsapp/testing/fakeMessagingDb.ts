@@ -9,6 +9,7 @@ import type {
 
 interface StoredMessage extends StoreMessageInput {
   id: string;
+  createdAt: string;
 }
 
 interface StoredNotification extends CreateOwnerNotificationInput {
@@ -44,10 +45,26 @@ export function createFakeMessagingDb(
       if (existing) return existing;
       const customer: CustomerRow = {
         id: nextId("cust"),
+        customerCode: `CUST-${String(counter).padStart(6, "0")}`,
         whatsappNumber,
         fullName: null,
       };
       customers.set(whatsappNumber, customer);
+      return customer;
+    },
+
+    async getCustomerById(customerId) {
+      return (
+        Array.from(customers.values()).find((c) => c.id === customerId) ?? null
+      );
+    },
+
+    async updateCustomerFullName(customerId, fullName) {
+      const customer = Array.from(customers.values()).find(
+        (c) => c.id === customerId,
+      );
+      if (!customer) throw new Error(`No fake customer ${customerId}`);
+      customer.fullName = fullName;
       return customer;
     },
 
@@ -58,18 +75,50 @@ export function createFakeMessagingDb(
         id: nextId("conv"),
         customerId,
         mode: "AI",
+        state: {},
       };
       conversations.set(customerId, conversation);
       return conversation;
     },
 
+    async getConversationById(conversationId) {
+      return (
+        Array.from(conversations.values()).find(
+          (c) => c.id === conversationId,
+        ) ?? null
+      );
+    },
+
     async storeMessage(input) {
-      messages.push({ ...input, id: nextId("msg") });
+      messages.push({
+        ...input,
+        id: nextId("msg"),
+        createdAt: new Date(Date.now() + messages.length).toISOString(),
+      });
+    },
+
+    async listRecentMessages(conversationId, limit) {
+      return messages
+        .filter((m) => m.conversationId === conversationId)
+        .slice(-limit)
+        .map((m) => ({
+          id: m.id,
+          direction: m.direction,
+          sender: m.sender,
+          body: m.body,
+          createdAt: m.createdAt,
+        }));
     },
 
     async setConversationMode(conversationId, mode) {
       for (const conversation of conversations.values()) {
         if (conversation.id === conversationId) conversation.mode = mode;
+      }
+    },
+
+    async updateConversationState(conversationId, state) {
+      for (const conversation of conversations.values()) {
+        if (conversation.id === conversationId) conversation.state = state;
       }
     },
 

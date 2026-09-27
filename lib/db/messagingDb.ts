@@ -1,10 +1,12 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/db/types";
+import type { Database, Json } from "@/lib/db/types";
 import type {
   ConversationRow,
+  ConversationState,
   CreateOwnerNotificationInput,
   CustomerRow,
+  MessageRow,
   MessagingDb,
   StoreMessageInput,
 } from "@/lib/whatsapp/ports";
@@ -13,17 +15,34 @@ type Client = SupabaseClient<Database>;
 type CustomerTableRow = Database["public"]["Tables"]["customers"]["Row"];
 type ConversationTableRow =
   Database["public"]["Tables"]["conversations"]["Row"];
+type MessageTableRow = Database["public"]["Tables"]["messages"]["Row"];
 
 function mapCustomer(row: CustomerTableRow): CustomerRow {
   return {
     id: row.id,
+    customerCode: row.customer_code,
     whatsappNumber: row.whatsapp_number,
     fullName: row.full_name,
   };
 }
 
 function mapConversation(row: ConversationTableRow): ConversationRow {
-  return { id: row.id, customerId: row.customer_id, mode: row.mode };
+  return {
+    id: row.id,
+    customerId: row.customer_id,
+    mode: row.mode,
+    state: (row.state as ConversationState | null) ?? {},
+  };
+}
+
+function mapMessage(row: MessageTableRow): MessageRow {
+  return {
+    id: row.id,
+    direction: row.direction,
+    sender: row.sender,
+    body: row.body,
+    createdAt: row.created_at,
+  };
 }
 
 /**
@@ -61,6 +80,27 @@ export function createSupabaseMessagingDb(client: Client): MessagingDb {
       return mapCustomer(created);
     },
 
+    async getCustomerById(customerId) {
+      const { data, error } = await client
+        .from("customers")
+        .select("*")
+        .eq("id", customerId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapCustomer(data) : null;
+    },
+
+    async updateCustomerFullName(customerId, fullName) {
+      const { data, error } = await client
+        .from("customers")
+        .update({ full_name: fullName })
+        .eq("id", customerId)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return mapCustomer(data);
+    },
+
     async getOrCreateConversation(customerId) {
       const { data: existing, error: findError } = await client
         .from("conversations")
@@ -80,6 +120,16 @@ export function createSupabaseMessagingDb(client: Client): MessagingDb {
       return mapConversation(created);
     },
 
+    async getConversationById(conversationId) {
+      const { data, error } = await client
+        .from("conversations")
+        .select("*")
+        .eq("id", conversationId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapConversation(data) : null;
+    },
+
     async storeMessage(input: StoreMessageInput) {
       const { error } = await client.from("messages").insert({
         conversation_id: input.conversationId,
@@ -97,10 +147,29 @@ export function createSupabaseMessagingDb(client: Client): MessagingDb {
       if (touchError) throw touchError;
     },
 
+    async listRecentMessages(conversationId, limit) {
+      const { data, error } = await client
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []).map(mapMessage).reverse();
+    },
+
     async setConversationMode(conversationId, mode) {
       const { error } = await client
         .from("conversations")
         .update({ mode })
+        .eq("id", conversationId);
+      if (error) throw error;
+    },
+
+    async updateConversationState(conversationId, state) {
+      const { error } = await client
+        .from("conversations")
+        .update({ state: state as Json })
         .eq("id", conversationId);
       if (error) throw error;
     },
