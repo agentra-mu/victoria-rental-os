@@ -112,6 +112,8 @@ export interface DomainDb {
   /** Subset of the given vehicle ids that have a conflicting active booking. */
   findOverlappingVehicleIds(filter: OverlapFilter): Promise<Set<string>>;
   getBookingById(id: string): Promise<BookingRow | null>;
+  /** Most recent non-terminal (not CANCELLED/COMPLETED) booking for a customer, if any. */
+  getActiveBookingForCustomer(customerId: string): Promise<BookingRow | null>;
   createBooking(customerId: string): Promise<BookingRow>;
   updateBooking(id: string, patch: BookingPatch): Promise<BookingRow>;
   recordEvent(event: BookingEventInput): Promise<void>;

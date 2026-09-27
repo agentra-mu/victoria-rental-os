@@ -96,6 +96,16 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
       return bookings.get(id) ?? null;
     },
 
+    async getActiveBookingForCustomer(customerId) {
+      const matches = Array.from(bookings.values()).filter(
+        (b) =>
+          b.customerId === customerId &&
+          b.status !== "CANCELLED" &&
+          b.status !== "COMPLETED",
+      );
+      return matches.length > 0 ? matches[matches.length - 1] : null;
+    },
+
     async createBooking(customerId) {
       const id = `booking-${bookingCounter}`;
       const booking: BookingRow = {

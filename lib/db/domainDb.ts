@@ -193,6 +193,20 @@ export function createSupabaseDomainDb(client: Client): DomainDb {
       return data ? mapBooking(data) : null;
     },
 
+    async getActiveBookingForCustomer(customerId) {
+      const { data, error } = await client
+        .from("bookings")
+        .select("*")
+        .eq("customer_id", customerId)
+        .neq("status", "CANCELLED")
+        .neq("status", "COMPLETED")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapBooking(data) : null;
+    },
+
     async createBooking(customerId) {
       const { data, error } = await client
         .from("bookings")

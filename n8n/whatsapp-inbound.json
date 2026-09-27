@@ -1,0 +1,442 @@
+{
+  "name": "WhatsApp Inbound",
+  "nodes": [
+    {
+      "id": "webhook-verify",
+      "name": "Webhook - Verify (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, -200],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "whatsapp-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "verify-token-matches",
+      "name": "Verify Token Matches",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [40, -200],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "verify-token-cond",
+              "leftValue": "={{ $json.query[\"hub.verify_token\"] }}",
+              "rightValue": "={{ $env.WHATSAPP_VERIFY_TOKEN }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "respond-challenge",
+      "name": "Respond Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [300, -280],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query[\"hub.challenge\"] }}",
+        "options": { "responseCode": 200 }
+      }
+    },
+    {
+      "id": "respond-forbidden",
+      "name": "Respond Forbidden",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [300, -120],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Verification failed",
+        "options": { "responseCode": 403 }
+      }
+    },
+    {
+      "id": "webhook-inbound",
+      "name": "Webhook - Inbound (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 120],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "respond-200-immediately",
+      "name": "Respond 200 Immediately",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [40, 120],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"received\" } }}",
+        "options": { "responseCode": 200 }
+      }
+    },
+    {
+      "id": "has-messages",
+      "name": "Has Messages",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [300, 120],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-messages-cond",
+              "leftValue": "={{ $json.body.entry?.[0]?.changes?.[0]?.value?.messages }}",
+              "rightValue": "",
+              "operator": { "type": "array", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "normalize-inbound-message",
+      "name": "Normalize Inbound Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 60],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const body = $input.item.json.body;\nconst change = body?.entry?.[0]?.changes?.[0]?.value;\nconst message = change?.messages?.[0];\n\nif (!message) {\n  throw new Error('Has Messages passed an item with no message[0] — check the IF condition upstream.');\n}\n\nconst from = message.from;\nconst messageId = message.id;\nconst timestamp = message.timestamp;\n\nlet type = message.type;\nlet text;\nlet replyId;\n\nif (message.type === 'interactive') {\n  const interactive = message.interactive;\n  if (interactive?.type === 'button_reply') {\n    type = 'button_reply';\n    replyId = interactive.button_reply.id;\n    text = interactive.button_reply.title;\n  } else if (interactive?.type === 'list_reply') {\n    type = 'list_reply';\n    replyId = interactive.list_reply.id;\n    text = interactive.list_reply.title;\n  } else {\n    type = 'text';\n    text = `[unsupported interactive type: ${interactive?.type}]`;\n  }\n} else if (message.type === 'text') {\n  type = 'text';\n  text = message.text?.body ?? '';\n} else if (message.type === 'image') {\n  type = 'image';\n  text = message.image?.caption ?? '';\n} else if (message.type === 'document') {\n  type = 'document';\n  text = message.document?.caption ?? '';\n} else if (message.type === 'location') {\n  type = 'location';\n  text = `${message.location?.latitude},${message.location?.longitude}`;\n} else {\n  // audio, video, sticker, contacts, reactions, unsupported/system message types.\n  type = 'text';\n  text = `[unsupported message type: ${message.type}]`;\n}\n\nreturn {\n  json: {\n    from,\n    messageId,\n    timestamp,\n    type,\n    text,\n    ...(replyId !== undefined ? { replyId } : {}),\n  },\n};"
+      }
+    },
+    {
+      "id": "call-backend",
+      "name": "Call Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 60],
+      "onError": "continueErrorOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/whatsapp/inbound",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.INTERNAL_API_SECRET }}"
+            },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "split-replies",
+      "name": "Split Replies",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [1040, -40],
+      "parameters": {
+        "fieldToSplitOut": "data.replies",
+        "options": {}
+      }
+    },
+    {
+      "id": "reply-type",
+      "name": "Reply Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1280, -40],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "outputKey": "text",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "reply-type-text",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "text",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "buttons",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "reply-type-buttons",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "buttons",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "list",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "reply-type-list",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "list",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "send-text-reply",
+      "name": "Send Text Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, -160],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.facebook.com/v21.0/\" + $env.WHATSAPP_PHONE_NUMBER_ID + \"/messages\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $env.WHATSAPP_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: \"whatsapp\", to: $('Normalize Inbound Message').item.json.from, type: \"text\", text: { body: $json.text } }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "send-interactive-reply",
+      "name": "Send Interactive Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 40],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.facebook.com/v21.0/\" + $env.WHATSAPP_PHONE_NUMBER_ID + \"/messages\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $env.WHATSAPP_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: \"whatsapp\", to: $('Normalize Inbound Message').item.json.from, type: \"interactive\", interactive: $json.interactive }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "has-owner-notification",
+      "name": "Has Owner Notification",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1040, 220],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-notify-owner-cond",
+              "leftValue": "={{ $json.data.notifyOwner }}",
+              "rightValue": "",
+              "operator": { "type": "object", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "notify-owner",
+      "name": "Notify Owner",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 220],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.facebook.com/v21.0/\" + $env.WHATSAPP_PHONE_NUMBER_ID + \"/messages\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $env.WHATSAPP_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: \"whatsapp\", to: $env.OWNER_WHATSAPP_NUMBER, type: \"text\", text: { body: $json.data.notifyOwner.title + ($json.data.notifyOwner.body ? (\"\\n\" + $json.data.notifyOwner.body) : \"\") } }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "send-fallback-to-customer",
+      "name": "Send Fallback To Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 340],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.facebook.com/v21.0/\" + $env.WHATSAPP_PHONE_NUMBER_ID + \"/messages\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $env.WHATSAPP_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: \"whatsapp\", to: $('Normalize Inbound Message').item.json.from, type: \"text\", text: { body: \"Sorry, something went wrong — a member of our team will get back to you shortly.\" } }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "log-error",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 460],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/whatsapp/error",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.INTERNAL_API_SECRET }}"
+            },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ from: $('Normalize Inbound Message').item.json.from, messageId: $('Normalize Inbound Message').item.json.messageId, step: \"call-backend\", error: $json.error?.message ?? $json.message ?? \"unknown error\" }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - Verify (GET)": {
+      "main": [[{ "node": "Verify Token Matches", "type": "main", "index": 0 }]]
+    },
+    "Verify Token Matches": {
+      "main": [
+        [{ "node": "Respond Challenge", "type": "main", "index": 0 }],
+        [{ "node": "Respond Forbidden", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook - Inbound (POST)": {
+      "main": [
+        [{ "node": "Respond 200 Immediately", "type": "main", "index": 0 }]
+      ]
+    },
+    "Respond 200 Immediately": {
+      "main": [[{ "node": "Has Messages", "type": "main", "index": 0 }]]
+    },
+    "Has Messages": {
+      "main": [
+        [{ "node": "Normalize Inbound Message", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Normalize Inbound Message": {
+      "main": [[{ "node": "Call Backend", "type": "main", "index": 0 }]]
+    },
+    "Call Backend": {
+      "main": [
+        [
+          { "node": "Split Replies", "type": "main", "index": 0 },
+          { "node": "Has Owner Notification", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Send Fallback To Customer", "type": "main", "index": 0 },
+          { "node": "Log Error", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Split Replies": {
+      "main": [[{ "node": "Reply Type", "type": "main", "index": 0 }]]
+    },
+    "Reply Type": {
+      "main": [
+        [{ "node": "Send Text Reply", "type": "main", "index": 0 }],
+        [{ "node": "Send Interactive Reply", "type": "main", "index": 0 }],
+        [{ "node": "Send Interactive Reply", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Owner Notification": {
+      "main": [[{ "node": "Notify Owner", "type": "main", "index": 0 }], []]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
