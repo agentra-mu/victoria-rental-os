@@ -1,4 +1,8 @@
 import { TIMEZONE } from "@/lib/domain/config";
+import {
+  buildCustomerContextSummary,
+  resolveActiveBooking,
+} from "@/lib/domain/customerContext";
 import { listAllKnowledgeBase } from "@/lib/domain/knowledgeBase";
 import type {
   BookingRow,
@@ -25,6 +29,10 @@ export interface AgentContext {
   customer: CustomerRow;
   conversation: ConversationRow;
   activeBooking: ActiveBookingContext | null;
+  /** Set when resolveActiveBooking found several equally-plausible bookings instead of one — the agent should ask which one. */
+  ambiguousBookingNumbers: number[] | null;
+  /** Compact text block from buildCustomerContextSummary: name, other bookings, rental history, open owner items. */
+  customerContextSummary: string;
   recentMessages: MessageRow[];
   knowledgeBase: KnowledgeBaseEntryRow[];
   /** Human-readable "now" in Indian/Mauritius, for the system prompt. */
@@ -84,20 +92,27 @@ export async function loadAgentContext(
 ): Promise<AgentContext> {
   const now = deps.now?.() ?? new Date();
 
-  const [activeBookingRow, recentMessages, knowledgeBase] = await Promise.all([
-    deps.domainDb.getActiveBookingForCustomer(customer.id),
-    deps.messaging.listRecentMessages(conversationId, HISTORY_MESSAGE_LIMIT),
-    listAllKnowledgeBase(deps.domainDb),
-  ]);
+  const [resolution, recentMessages, knowledgeBase, customerContextSummary] =
+    await Promise.all([
+      resolveActiveBooking(deps.domainDb, customer.id, now),
+      deps.messaging.listRecentMessages(conversationId, HISTORY_MESSAGE_LIMIT),
+      listAllKnowledgeBase(deps.domainDb),
+      buildCustomerContextSummary(deps, customer.id, now),
+    ]);
 
-  const activeBooking = activeBookingRow
-    ? await describeActiveBooking(deps.domainDb, activeBookingRow)
+  const activeBooking = resolution.booking
+    ? await describeActiveBooking(deps.domainDb, resolution.booking)
+    : null;
+  const ambiguousBookingNumbers = resolution.ambiguous
+    ? resolution.candidates.map((b) => b.bookingNumber)
     : null;
 
   return {
     customer,
     conversation,
     activeBooking,
+    ambiguousBookingNumbers,
+    customerContextSummary,
     recentMessages,
     knowledgeBase,
     todayText: formatTodayText(now),

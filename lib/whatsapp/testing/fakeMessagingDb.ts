@@ -132,6 +132,15 @@ export function createFakeMessagingDb(
     async createOwnerNotification(input) {
       notifications.push({ ...input, id: nextId("notif"), status: "OPEN" });
     },
+
+    async countOpenNotificationsForBookings(bookingIds) {
+      return notifications.filter(
+        (n) =>
+          n.status === "OPEN" &&
+          n.bookingId != null &&
+          bookingIds.includes(n.bookingId),
+      ).length;
+    },
   };
 
   return { db, customers, conversations, messages, notifications };

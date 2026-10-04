@@ -96,6 +96,14 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
       return bookings.get(id) ?? null;
     },
 
+    async getBookingByNumber(bookingNumber) {
+      return (
+        Array.from(bookings.values()).find(
+          (b) => b.bookingNumber === bookingNumber,
+        ) ?? null
+      );
+    },
+
     async getActiveBookingForCustomer(customerId) {
       const matches = Array.from(bookings.values()).filter(
         (b) =>
@@ -104,6 +112,12 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
           b.status !== "COMPLETED",
       );
       return matches.length > 0 ? matches[matches.length - 1] : null;
+    },
+
+    async listBookingsForCustomer(customerId) {
+      return Array.from(bookings.values()).filter(
+        (b) => b.customerId === customerId,
+      );
     },
 
     async createBooking(customerId) {
@@ -127,6 +141,9 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
         uploadToken: null,
         uploadTokenExpiresAt: null,
         notes: null,
+        // Monotonically increasing with bookingCounter so tests relying on
+        // creation order (e.g. "most recent draft") stay deterministic.
+        createdAt: new Date(bookingCounter * 1000).toISOString(),
       };
       bookings.set(id, booking);
       return booking;

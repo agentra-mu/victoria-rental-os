@@ -69,4 +69,34 @@ describe("loadAgentContext", () => {
       pickupLocationName: "SSR International Airport",
     });
   });
+
+  it("surfaces ambiguous bookings instead of picking one", async () => {
+    const { fakeDb, fakeMessaging } = createAgentFixture();
+    const customer =
+      await fakeMessaging.db.findOrCreateCustomer("+23057633333");
+    const conversation = await fakeMessaging.db.getOrCreateConversation(
+      customer.id,
+    );
+    const first = await fakeDb.db.createBooking(customer.id);
+    await fakeDb.db.updateBooking(first.id, { status: "PICKED_UP" });
+    const second = await fakeDb.db.createBooking(customer.id);
+    await fakeDb.db.updateBooking(second.id, { status: "PICKED_UP" });
+
+    const context = await loadAgentContext(
+      {
+        domainDb: fakeDb.db,
+        messaging: fakeMessaging.db,
+        now: () => new Date("2026-10-01T08:00:00Z"),
+      },
+      conversation.id,
+      customer,
+      conversation,
+    );
+
+    expect(context.activeBooking).toBeNull();
+    expect(context.ambiguousBookingNumbers?.sort()).toEqual(
+      [first.bookingNumber, second.bookingNumber].sort(),
+    );
+    expect(context.customerContextSummary).toMatch(customer.customerCode);
+  });
 });

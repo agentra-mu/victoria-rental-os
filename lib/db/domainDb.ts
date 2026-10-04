@@ -86,6 +86,7 @@ function mapBooking(row: BookingTableRow): BookingRow {
     uploadToken: row.upload_token,
     uploadTokenExpiresAt: row.upload_token_expires_at,
     notes: row.notes,
+    createdAt: row.created_at,
   };
 }
 
@@ -193,6 +194,16 @@ export function createSupabaseDomainDb(client: Client): DomainDb {
       return data ? mapBooking(data) : null;
     },
 
+    async getBookingByNumber(bookingNumber) {
+      const { data, error } = await client
+        .from("bookings")
+        .select("*")
+        .eq("booking_number", bookingNumber)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapBooking(data) : null;
+    },
+
     async getActiveBookingForCustomer(customerId) {
       const { data, error } = await client
         .from("bookings")
@@ -205,6 +216,16 @@ export function createSupabaseDomainDb(client: Client): DomainDb {
         .maybeSingle();
       if (error) throw error;
       return data ? mapBooking(data) : null;
+    },
+
+    async listBookingsForCustomer(customerId) {
+      const { data, error } = await client
+        .from("bookings")
+        .select("*")
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map(mapBooking);
     },
 
     async createBooking(customerId) {

@@ -11,6 +11,10 @@ import {
 } from "@/lib/domain/updateBookingDraft";
 import { calculatePrice } from "@/lib/domain/calculatePrice";
 import { confirmBooking } from "@/lib/domain/confirmBooking";
+import {
+  requestNumberLink,
+  verifyBookingIdentity,
+} from "@/lib/domain/customerContext";
 import { escalateBookingToHuman } from "@/lib/domain/escalateBookingToHuman";
 import type { BookingRow, DomainDb } from "@/lib/domain/ports";
 import { formatBookingSummaryText } from "@/lib/whatsapp/format";
@@ -331,6 +335,29 @@ async function toolRecordCustomerUpdate(
   return ok({ recorded: true });
 }
 
+async function toolVerifyReturningCustomer(
+  ctx: ToolContext,
+  input: { bookingNumber: number; fullName: string },
+): Promise<ToolExecutionResult> {
+  const result = await verifyBookingIdentity(
+    { domainDb: ctx.domainDb, messaging: ctx.messaging },
+    input.bookingNumber,
+    input.fullName,
+  );
+  if (!result.verified || !result.booking) {
+    return ok({ verified: false });
+  }
+
+  await requestNumberLink(ctx.messaging, {
+    newWhatsappNumber: ctx.customer.whatsappNumber,
+    booking: result.booking,
+    claimedFullName: input.fullName,
+  });
+  // Deliberately no booking details in the result — CLAUDE.md: never expose
+  // booking details to an unverified number. The team links it after review.
+  return ok({ verified: true, pendingOwnerApproval: true });
+}
+
 async function toolEscalateToHuman(
   ctx: ToolContext,
   input: { reason: string },
@@ -368,6 +395,7 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   confirm_booking: toolConfirmBooking as ToolHandler,
   send_document_upload_link: toolSendDocumentUploadLink as ToolHandler,
   record_customer_update: toolRecordCustomerUpdate as ToolHandler,
+  verify_returning_customer: toolVerifyReturningCustomer as ToolHandler,
   escalate_to_human: toolEscalateToHuman as ToolHandler,
 };
 
@@ -482,6 +510,19 @@ export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
         details: { type: "string" },
       },
       required: ["bookingId", "type", "details"],
+    },
+  },
+  {
+    name: "verify_returning_customer",
+    description:
+      "Use when a customer messaging from a number with no booking on file claims to already have one. Ask for their booking number and the exact full name on that booking first, then call this to check both match. Never returns booking details either way — on a match, the team is notified to link the number (tell the customer a team member will confirm shortly); on no match, say you couldn't verify it without saying which part was wrong.",
+    input_schema: {
+      type: "object",
+      properties: {
+        bookingNumber: { type: "number" },
+        fullName: { type: "string" },
+      },
+      required: ["bookingNumber", "fullName"],
     },
   },
   {

@@ -62,6 +62,7 @@ export interface BookingRow {
   uploadToken: string | null;
   uploadTokenExpiresAt: string | null;
   notes: string | null;
+  createdAt: string;
 }
 
 export interface OverlapFilter {
@@ -112,8 +113,11 @@ export interface DomainDb {
   /** Subset of the given vehicle ids that have a conflicting active booking. */
   findOverlappingVehicleIds(filter: OverlapFilter): Promise<Set<string>>;
   getBookingById(id: string): Promise<BookingRow | null>;
+  getBookingByNumber(bookingNumber: number): Promise<BookingRow | null>;
   /** Most recent non-terminal (not CANCELLED/COMPLETED) booking for a customer, if any. */
   getActiveBookingForCustomer(customerId: string): Promise<BookingRow | null>;
+  /** Every booking for a customer, any status — the raw material for /lib/domain/customerContext.ts. */
+  listBookingsForCustomer(customerId: string): Promise<BookingRow[]>;
   createBooking(customerId: string): Promise<BookingRow>;
   updateBooking(id: string, patch: BookingPatch): Promise<BookingRow>;
   recordEvent(event: BookingEventInput): Promise<void>;

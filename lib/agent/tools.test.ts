@@ -344,3 +344,69 @@ describe("escalate_to_human", () => {
     expect(booking?.status).toBe("NEEDS_HUMAN");
   });
 });
+
+describe("verify_returning_customer", () => {
+  /** A second customer (new number) sharing the first's domainDb/messaging, so the booking it's asking about actually exists for it to find. */
+  async function makeNewNumberCtx(
+    fakeMessaging: Awaited<ReturnType<typeof makeCtx>>["fakeMessaging"],
+    ctx: ToolContext,
+  ): Promise<ToolContext> {
+    const newCustomer =
+      await fakeMessaging.db.findOrCreateCustomer("+23057655555");
+    return { ...ctx, customer: newCustomer };
+  }
+
+  it("never returns booking details, even on a match — it only flags the number for the team", async () => {
+    const { ctx, fakeDb, fakeMessaging } = await makeCtx();
+    const owner = await fakeMessaging.db.findOrCreateCustomer("+23057699999");
+    await fakeMessaging.db.updateCustomerFullName(owner.id, "Jean Paul Dupont");
+    const theirBooking = await fakeDb.db.createBooking(owner.id);
+    const newNumberCtx = await makeNewNumberCtx(fakeMessaging, ctx);
+
+    const result = await executeTool(
+      "verify_returning_customer",
+      {
+        bookingNumber: theirBooking.bookingNumber,
+        fullName: "Jean Paul Dupont",
+      },
+      newNumberCtx,
+    );
+
+    const { data } = parse(result.content) as {
+      data: Record<string, unknown>;
+    };
+    expect(data).toEqual({ verified: true, pendingOwnerApproval: true });
+    expect(fakeMessaging.notifications).toContainEqual(
+      expect.objectContaining({ type: "OTHER", bookingId: theirBooking.id }),
+    );
+  });
+
+  it("does not create a notification and reports unverified on a name mismatch", async () => {
+    const { ctx, fakeDb, fakeMessaging } = await makeCtx();
+    const owner = await fakeMessaging.db.findOrCreateCustomer("+23057688888");
+    await fakeMessaging.db.updateCustomerFullName(owner.id, "Jean Paul Dupont");
+    const theirBooking = await fakeDb.db.createBooking(owner.id);
+    const newNumberCtx = await makeNewNumberCtx(fakeMessaging, ctx);
+
+    const result = await executeTool(
+      "verify_returning_customer",
+      { bookingNumber: theirBooking.bookingNumber, fullName: "Wrong Name" },
+      newNumberCtx,
+    );
+
+    const { data } = parse(result.content) as { data: { verified: boolean } };
+    expect(data.verified).toBe(false);
+    expect(fakeMessaging.notifications).toHaveLength(0);
+  });
+
+  it("reports unverified for a booking number that doesn't exist", async () => {
+    const { ctx } = await makeCtx();
+    const result = await executeTool(
+      "verify_returning_customer",
+      { bookingNumber: 999999, fullName: "Anyone" },
+      ctx,
+    );
+    const { data } = parse(result.content) as { data: { verified: boolean } };
+    expect(data.verified).toBe(false);
+  });
+});

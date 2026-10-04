@@ -95,4 +95,6 @@ export interface MessagingDb {
     type: OwnerNotificationType,
   ): Promise<boolean>;
   createOwnerNotification(input: CreateOwnerNotificationInput): Promise<void>;
+  /** Count of OPEN notifications across a set of bookings — used for the customer context summary. */
+  countOpenNotificationsForBookings(bookingIds: string[]): Promise<number>;
 }

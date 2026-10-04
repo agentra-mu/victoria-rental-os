@@ -194,5 +194,16 @@ export function createSupabaseMessagingDb(client: Client): MessagingDb {
       });
       if (error) throw error;
     },
+
+    async countOpenNotificationsForBookings(bookingIds) {
+      if (bookingIds.length === 0) return 0;
+      const { error, count } = await client
+        .from("owner_notifications")
+        .select("id", { count: "exact", head: true })
+        .in("booking_id", bookingIds)
+        .eq("status", "OPEN");
+      if (error) throw error;
+      return count ?? 0;
+    },
   };
 }
