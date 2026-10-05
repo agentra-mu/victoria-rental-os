@@ -5,6 +5,8 @@ import type {
   BookingEventInput,
   BookingPatch,
   BookingRow,
+  CreateDocumentInput,
+  DocumentRow,
   DomainDb,
   KnowledgeBaseEntryRow,
   LocationRow,
@@ -22,6 +24,7 @@ type BookingTableRow = Database["public"]["Tables"]["bookings"]["Row"];
 type BookingTableUpdate = Database["public"]["Tables"]["bookings"]["Update"];
 type KnowledgeBaseTableRow =
   Database["public"]["Tables"]["knowledge_base"]["Row"];
+type DocumentTableRow = Database["public"]["Tables"]["documents"]["Row"];
 
 function mapVehicle(row: VehicleTableRow): VehicleRow {
   return {
@@ -90,6 +93,19 @@ function mapBooking(row: BookingTableRow): BookingRow {
   };
 }
 
+function mapDocument(row: DocumentTableRow): DocumentRow {
+  return {
+    id: row.id,
+    bookingId: row.booking_id,
+    customerId: row.customer_id,
+    docType: row.doc_type,
+    storagePath: row.storage_path,
+    mimeType: row.mime_type,
+    uploadedAt: row.uploaded_at,
+    deletedAt: row.deleted_at,
+  };
+}
+
 function patchToUpdate(patch: BookingPatch): BookingTableUpdate {
   const update: BookingTableUpdate = {};
   if (patch.vehicleId !== undefined) update.vehicle_id = patch.vehicleId;
@@ -105,6 +121,8 @@ function patchToUpdate(patch: BookingPatch): BookingTableUpdate {
   if (patch.extrasRs !== undefined) update.extras_rs = patch.extrasRs;
   if (patch.totalRs !== undefined) update.total_rs = patch.totalRs;
   if (patch.status !== undefined) update.status = patch.status;
+  if (patch.documentStatus !== undefined)
+    update.document_status = patch.documentStatus;
   if (patch.uploadToken !== undefined) update.upload_token = patch.uploadToken;
   if (patch.uploadTokenExpiresAt !== undefined)
     update.upload_token_expires_at = patch.uploadTokenExpiresAt;
@@ -204,6 +222,16 @@ export function createSupabaseDomainDb(client: Client): DomainDb {
       return data ? mapBooking(data) : null;
     },
 
+    async getBookingByUploadToken(token) {
+      const { data, error } = await client
+        .from("bookings")
+        .select("*")
+        .eq("upload_token", token)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapBooking(data) : null;
+    },
+
     async getActiveBookingForCustomer(customerId) {
       const { data, error } = await client
         .from("bookings")
@@ -286,6 +314,32 @@ export function createSupabaseDomainDb(client: Client): DomainDb {
         .order("topic");
       if (error) throw error;
       return (data ?? []).map(mapKnowledgeBaseEntry);
+    },
+
+    async listDocumentsForBooking(bookingId) {
+      const { data, error } = await client
+        .from("documents")
+        .select("*")
+        .eq("booking_id", bookingId)
+        .is("deleted_at", null);
+      if (error) throw error;
+      return (data ?? []).map(mapDocument);
+    },
+
+    async createDocument(input: CreateDocumentInput) {
+      const { data, error } = await client
+        .from("documents")
+        .insert({
+          booking_id: input.bookingId,
+          customer_id: input.customerId,
+          doc_type: input.docType,
+          storage_path: input.storagePath,
+          mime_type: input.mimeType,
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      return mapDocument(data);
     },
   };
 }

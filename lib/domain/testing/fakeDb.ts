@@ -2,6 +2,8 @@ import type {
   BookingEventInput,
   BookingPatch,
   BookingRow,
+  CreateDocumentInput,
+  DocumentRow,
   DomainDb,
   KnowledgeBaseEntryRow,
   LocationRow,
@@ -23,9 +25,11 @@ export interface FakeDbSeed {
   locations?: LocationRow[];
   bookings?: BookingRow[];
   knowledgeBase?: KnowledgeBaseEntryRow[];
+  documents?: DocumentRow[];
 }
 
 let bookingCounter = 1000;
+let documentCounter = 1;
 
 /**
  * In-memory stand-in for the Supabase-backed DomainDb, used by the pure
@@ -44,6 +48,7 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
   const knowledgeBase = new Map(
     seed.knowledgeBase?.map((k) => [k.id, k]) ?? [],
   );
+  const documents = new Map(seed.documents?.map((d) => [d.id, d]) ?? []);
   const events: BookingEventInput[] = [];
 
   const db: DomainDb = {
@@ -101,6 +106,13 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
         Array.from(bookings.values()).find(
           (b) => b.bookingNumber === bookingNumber,
         ) ?? null
+      );
+    },
+
+    async getBookingByUploadToken(token) {
+      return (
+        Array.from(bookings.values()).find((b) => b.uploadToken === token) ??
+        null
       );
     },
 
@@ -211,6 +223,28 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
     async listActiveKnowledgeBase() {
       return Array.from(knowledgeBase.values());
     },
+
+    async listDocumentsForBooking(bookingId) {
+      return Array.from(documents.values()).filter(
+        (d) => d.bookingId === bookingId && d.deletedAt === null,
+      );
+    },
+
+    async createDocument(input: CreateDocumentInput) {
+      const id = `doc-${documentCounter++}`;
+      const document: DocumentRow = {
+        id,
+        bookingId: input.bookingId,
+        customerId: input.customerId,
+        docType: input.docType,
+        storagePath: input.storagePath,
+        mimeType: input.mimeType,
+        uploadedAt: new Date(documentCounter * 1000).toISOString(),
+        deletedAt: null,
+      };
+      documents.set(id, document);
+      return document;
+    },
   };
 
   return {
@@ -220,6 +254,7 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
     locations,
     bookings,
     knowledgeBase,
+    documents,
     events,
   };
 }

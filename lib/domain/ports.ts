@@ -5,6 +5,7 @@ export type PaymentStatus = "UNPAID" | "PAID" | "REFUNDED";
 export type DocumentStatus =
   "NOT_SUBMITTED" | "PENDING" | "VERIFIED" | "NEEDS_REVIEW" | "REJECTED";
 export type BookingEventActor = "ai" | "owner" | "customer" | "system";
+export type DocType = "PASSPORT" | "DRIVING_PERMIT";
 
 export interface VehicleRow {
   id: string;
@@ -84,6 +85,7 @@ export interface BookingPatch {
   extrasRs?: number;
   totalRs?: number | null;
   status?: BookingStatus;
+  documentStatus?: DocumentStatus;
   uploadToken?: string | null;
   uploadTokenExpiresAt?: string | null;
 }
@@ -93,6 +95,26 @@ export interface BookingEventInput {
   eventType: string;
   actor: BookingEventActor;
   payload?: Record<string, unknown>;
+}
+
+export interface DocumentRow {
+  id: string;
+  bookingId: string;
+  customerId: string;
+  docType: DocType;
+  /** Path inside the private `documents` storage bucket — never a public URL (CLAUDE.md). */
+  storagePath: string;
+  mimeType: string;
+  uploadedAt: string;
+  deletedAt: string | null;
+}
+
+export interface CreateDocumentInput {
+  bookingId: string;
+  customerId: string;
+  docType: DocType;
+  storagePath: string;
+  mimeType: string;
 }
 
 /**
@@ -114,6 +136,7 @@ export interface DomainDb {
   findOverlappingVehicleIds(filter: OverlapFilter): Promise<Set<string>>;
   getBookingById(id: string): Promise<BookingRow | null>;
   getBookingByNumber(bookingNumber: number): Promise<BookingRow | null>;
+  getBookingByUploadToken(token: string): Promise<BookingRow | null>;
   /** Most recent non-terminal (not CANCELLED/COMPLETED) booking for a customer, if any. */
   getActiveBookingForCustomer(customerId: string): Promise<BookingRow | null>;
   /** Every booking for a customer, any status — the raw material for /lib/domain/customerContext.ts. */
@@ -127,4 +150,7 @@ export interface DomainDb {
     limit: number,
   ): Promise<KnowledgeBaseEntryRow[]>;
   listActiveKnowledgeBase(): Promise<KnowledgeBaseEntryRow[]>;
+  /** Non-deleted documents for a booking, used to tell whether both PASSPORT and DRIVING_PERMIT are on file. */
+  listDocumentsForBooking(bookingId: string): Promise<DocumentRow[]>;
+  createDocument(input: CreateDocumentInput): Promise<DocumentRow>;
 }

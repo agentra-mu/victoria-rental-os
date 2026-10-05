@@ -1,5 +1,6 @@
 import type {
   BookingRow,
+  DocumentRow,
   KnowledgeBaseEntryRow,
   LocationRow,
   VehicleCategoryRow,
@@ -80,6 +81,21 @@ export function booking(
     uploadTokenExpiresAt: null,
     notes: null,
     createdAt: "2026-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+export function document(
+  overrides: Partial<DocumentRow> & { id: string },
+): DocumentRow {
+  return {
+    bookingId: "booking-1000",
+    customerId: "cust-1",
+    docType: "PASSPORT",
+    storagePath: `documents/booking-1000/PASSPORT-${overrides.id}.jpg`,
+    mimeType: "image/jpeg",
+    uploadedAt: "2026-01-01T00:00:00Z",
+    deletedAt: null,
     ...overrides,
   };
 }
