@@ -360,7 +360,7 @@ async function toolVerifyReturningCustomer(
 
 async function toolEscalateToHuman(
   ctx: ToolContext,
-  input: { reason: string },
+  input: { reason: string; type?: "NEEDS_HUMAN" | "CASH_ISSUE" },
 ): Promise<ToolExecutionResult> {
   await ctx.messaging.setConversationMode(ctx.conversationId, "HUMAN");
 
@@ -372,8 +372,11 @@ async function toolEscalateToHuman(
   }
 
   await ctx.messaging.createOwnerNotification({
-    type: "NEEDS_HUMAN",
-    title: `${ctx.customer.whatsappNumber} needs a human`,
+    type: input.type === "CASH_ISSUE" ? "CASH_ISSUE" : "NEEDS_HUMAN",
+    title:
+      input.type === "CASH_ISSUE"
+        ? `${ctx.customer.whatsappNumber} can't pay cash`
+        : `${ctx.customer.whatsappNumber} needs a human`,
     body: input.reason,
     bookingId: activeBooking?.id ?? null,
   });
@@ -396,8 +399,58 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   send_document_upload_link: toolSendDocumentUploadLink as ToolHandler,
   record_customer_update: toolRecordCustomerUpdate as ToolHandler,
   verify_returning_customer: toolVerifyReturningCustomer as ToolHandler,
+  request_booking_change: toolRequestBookingChange as ToolHandler,
   escalate_to_human: toolEscalateToHuman as ToolHandler,
 };
+
+async function toolRequestBookingChange(
+  ctx: ToolContext,
+  input: {
+    bookingId: string;
+    type:
+      | "RETURN_DELAY"
+      | "PICKUP_TIME_CHANGE"
+      | "RETURN_TIME_CHANGE"
+      | "EXTENSION"
+      | "LOCATION_CHANGE"
+      | "CANCELLATION";
+    newReturnAt?: string;
+    newPickupAt?: string;
+    newDropoffLocationId?: string;
+    note?: string;
+  },
+): Promise<ToolExecutionResult> {
+  const booking = await ctx.domainDb.getBookingById(input.bookingId);
+  if (!booking || booking.customerId !== ctx.customer.id) {
+    return fail("BOOKING_NOT_FOUND", "That booking is not on this customer");
+  }
+  try {
+    // Dynamic import keeps the service-role client out of unit-test graphs.
+    const { getServiceSupabase } = await import("@/lib/supabase/server");
+    const { createChangeRequest } =
+      await import("@/lib/domain/changeRequestsDb");
+    const result = await createChangeRequest(
+      getServiceSupabase(),
+      input.bookingId,
+      input.type,
+      {
+        newReturnAt: input.newReturnAt,
+        newPickupAt: input.newPickupAt,
+        newDropoffLocationId: input.newDropoffLocationId,
+        note: input.note,
+      },
+    );
+    return ok({
+      status: "PENDING_TEAM_APPROVAL",
+      quotedAdditionalRs: result.quotedAdditionalRs,
+      availabilityOk: result.availabilityOk,
+      note: "Tell the customer the quote and that it has been sent to the team for approval. It is NOT approved.",
+    });
+  } catch (error) {
+    if (error instanceof DomainError) return fail(error.code, error.message);
+    throw error;
+  }
+}
 
 export async function executeTool(
   name: string,
@@ -526,12 +579,47 @@ export const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
     },
   },
   {
+    name: "request_booking_change",
+    description:
+      "Files a change request for a booking: late return (RETURN_DELAY), pickup/return time change, EXTENSION, LOCATION_CHANGE or CANCELLATION. The engine checks the vehicle is free and quotes the extra cost (Rs). Pass ISO datetimes (+04:00) for newReturnAt/newPickupAt. Returns a quote only — you must tell the customer it has been sent to the team for approval, never that it is approved.",
+    input_schema: {
+      type: "object",
+      properties: {
+        bookingId: { type: "string" },
+        type: {
+          type: "string",
+          enum: [
+            "RETURN_DELAY",
+            "PICKUP_TIME_CHANGE",
+            "RETURN_TIME_CHANGE",
+            "EXTENSION",
+            "LOCATION_CHANGE",
+            "CANCELLATION",
+          ],
+        },
+        newReturnAt: { type: "string" },
+        newPickupAt: { type: "string" },
+        newDropoffLocationId: { type: "string" },
+        note: { type: "string" },
+      },
+      required: ["bookingId", "type"],
+    },
+  },
+  {
     name: "escalate_to_human",
     description:
       "Hands the conversation to a human team member: complaints, accidents/damage, payment difficulties, anything outside normal policy, repeated confusion, or an explicit request for a person. After calling this, give a brief closing reply and stop.",
     input_schema: {
       type: "object",
-      properties: { reason: { type: "string" } },
+      properties: {
+        reason: { type: "string" },
+        type: {
+          type: "string",
+          enum: ["NEEDS_HUMAN", "CASH_ISSUE"],
+          description:
+            "CASH_ISSUE when the customer says they cannot pay in cash.",
+        },
+      },
       required: ["reason"],
     },
   },

@@ -12,6 +12,9 @@ export const ERROR_CODES = [
   "LOCATION_NOT_FOUND",
   "BOOKING_NOT_FOUND",
   "INCOMPLETE_BOOKING",
+  "OUTSIDE_OPENING_HOURS",
+  "VEHICLE_NOT_ASSIGNABLE",
+  "REQUEST_NOT_PENDING",
 ] as const;
 
 export type DomainErrorCode = (typeof ERROR_CODES)[number];

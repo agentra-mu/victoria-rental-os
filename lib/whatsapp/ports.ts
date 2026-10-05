@@ -8,7 +8,10 @@ export type OwnerNotificationType =
   | "NEEDS_HUMAN"
   | "DOC_REVIEW"
   | "CASH_ISSUE"
-  | "OTHER";
+  | "OTHER"
+  | "CHANGE_REQUEST"
+  | "ALERT"
+  | "REMINDER";
 
 export interface CustomerRow {
   id: string;
@@ -29,6 +32,8 @@ export interface ConversationRow {
   customerId: string;
   mode: ConversationMode;
   state: ConversationState;
+  /** Summary of what a human discussed while in HUMAN mode — shown to the agent once after Return to AI. */
+  humanSummary?: string | null;
 }
 
 export interface StoreMessageInput {
@@ -67,6 +72,8 @@ export interface MessagingDb {
   ): Promise<{ id: string } | null>;
   findOrCreateCustomer(whatsappNumber: string): Promise<CustomerRow>;
   getCustomerById(customerId: string): Promise<CustomerRow | null>;
+  /** STOP / START replies — non-essential reminders respect this. */
+  setCustomerOptOut(customerId: string, optedOut: boolean): Promise<void>;
   updateCustomerFullName(
     customerId: string,
     fullName: string,

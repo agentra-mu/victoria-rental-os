@@ -1,6 +1,7 @@
 import { DomainError } from "./errors";
 import { calculateRentalDays } from "./calculateRentalDays";
 import type { RentalDayRule } from "./config";
+import { checkAfterHours } from "./openingHours";
 import type { DomainDb } from "./ports";
 
 export interface PriceLineItem {
@@ -93,6 +94,27 @@ export async function calculatePrice(
       label: `Drop-off fee — ${dropoffLocation.name}`,
       amountRs: dropoffLocation.extraFeeRs,
     });
+  }
+
+  for (const [loc, when, label] of [
+    [pickupLocation, args.pickupAt, "pickup"],
+    [dropoffLocation, args.returnAt, "return"],
+  ] as const) {
+    const check = checkAfterHours(loc, new Date(when));
+    if (!check.afterHours) continue;
+    if (!check.allowed) {
+      throw new DomainError(
+        "OUTSIDE_OPENING_HOURS",
+        `${loc.name} is closed at the requested ${label} time and does not allow after-hours ${label}`,
+      );
+    }
+    if (check.feeRs > 0) {
+      locationFeesRs += check.feeRs;
+      lineItems.push({
+        label: `After-hours ${label} fee — ${loc.name}`,
+        amountRs: check.feeRs,
+      });
+    }
   }
 
   if (extrasRs > 0) {

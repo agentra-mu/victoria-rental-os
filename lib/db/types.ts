@@ -695,6 +695,9 @@ export type Database = {
         | "DOC_REVIEW"
         | "CASH_ISSUE"
         | "OTHER"
+        | "CHANGE_REQUEST"
+        | "ALERT"
+        | "REMINDER"
       payment_method: "CASH"
       payment_status: "UNPAID" | "PAID" | "REFUNDED"
       staff_role: "OWNER" | "STAFF"
@@ -861,6 +864,9 @@ export const Constants = {
         "DOC_REVIEW",
         "CASH_ISSUE",
         "OTHER",
+        "CHANGE_REQUEST",
+        "ALERT",
+        "REMINDER",
       ],
       payment_method: ["CASH"],
       payment_status: ["UNPAID", "PAID", "REFUNDED"],

@@ -41,6 +41,12 @@ export interface LocationRow {
   isDropoff: boolean;
   extraFeeRs: number;
   active: boolean;
+  /** {"mon":["08:00","18:00"],...} in local time; missing/null day = closed. Absent = no restriction. */
+  openingHours?: import("./openingHours").OpeningHours | null;
+  afterHoursAllowed?: boolean;
+  afterHoursFeeRs?: number;
+  instructions?: string | null;
+  googleMapsUrl?: string | null;
 }
 
 export interface BookingRow {

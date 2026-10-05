@@ -27,3 +27,8 @@ export async function sendToCustomer(
     text,
   );
 }
+
+export const moreMessages = {
+  rejected: (n: number) =>
+    `Unfortunately we couldn't accept the documents for booking #${n}. A member of our team will contact you shortly to help.`,
+};

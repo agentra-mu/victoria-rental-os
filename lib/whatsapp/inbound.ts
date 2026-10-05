@@ -136,6 +136,23 @@ export async function handleInboundMessage(
     whatsappMessageId: payload.messageId,
   });
 
+  const lowered = inboundText.trim().toLowerCase();
+  if (payload.type === "text" && (lowered === "stop" || lowered === "start")) {
+    await deps.messaging.setCustomerOptOut(customer.id, lowered === "stop");
+    const reply = textReply(
+      lowered === "stop"
+        ? "You won't receive reminders any more. Reply START to receive them again."
+        : "Reminders are back on. Thank you!",
+    );
+    await deps.messaging.storeMessage({
+      conversationId: conversation.id,
+      direction: "OUTBOUND",
+      sender: "ai",
+      body: replyBodyText(reply),
+    });
+    return { replies: [reply] };
+  }
+
   if (conversation.mode === "HUMAN") {
     const activeBooking = await deps.getActiveBookingForCustomer(customer.id);
     await notifyOwnerIfNotAlreadyOpen(

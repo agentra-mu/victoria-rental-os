@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "evals": "vitest run --config vitest.evals.config.mts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
@@ -28,6 +29,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/heic-convert": "^2.1.1",
     "@types/node": "^24.13.6",

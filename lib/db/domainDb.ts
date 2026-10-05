@@ -58,6 +58,11 @@ function mapKnowledgeBaseEntry(
   };
 }
 
+type LocationExtra = {
+  after_hours_allowed?: boolean;
+  after_hours_fee_rs?: number;
+};
+
 function mapLocation(row: LocationTableRow): LocationRow {
   return {
     id: row.id,
@@ -66,6 +71,11 @@ function mapLocation(row: LocationTableRow): LocationRow {
     isDropoff: row.is_dropoff,
     extraFeeRs: row.extra_fee_rs,
     active: row.active,
+    openingHours: row.opening_hours as LocationRow["openingHours"],
+    afterHoursAllowed: (row as LocationExtra).after_hours_allowed ?? false,
+    afterHoursFeeRs: (row as LocationExtra).after_hours_fee_rs ?? 0,
+    instructions: row.instructions,
+    googleMapsUrl: row.google_maps_url,
   };
 }
 
@@ -195,9 +205,19 @@ export function createSupabaseDomainDb(client: Client): DomainDb {
 
       const { data, error } = await query;
       if (error) throw error;
+      // Maintenance blocks availability exactly like a booking (Component 13).
+      const { data: maint, error: maintError } = await (
+        client as unknown as SupabaseClient
+      )
+        .from("vehicle_maintenance")
+        .select("vehicle_id")
+        .in("vehicle_id", filter.vehicleIds)
+        .lt("start_at", filter.returnAt.toISOString())
+        .gt("end_at", filter.pickupAt.toISOString());
+      if (maintError) throw maintError;
       return new Set(
-        (data ?? [])
-          .map((row) => row.vehicle_id)
+        [...(data ?? []), ...(maint ?? [])]
+          .map((row) => row.vehicle_id as string | null)
           .filter((id): id is string => Boolean(id)),
       );
     },

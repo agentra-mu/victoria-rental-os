@@ -32,6 +32,8 @@ function mapConversation(row: ConversationTableRow): ConversationRow {
     customerId: row.customer_id,
     mode: row.mode,
     state: (row.state as ConversationState | null) ?? {},
+    humanSummary:
+      (row as { human_summary?: string | null }).human_summary ?? null,
   };
 }
 
@@ -88,6 +90,14 @@ export function createSupabaseMessagingDb(client: Client): MessagingDb {
         .maybeSingle();
       if (error) throw error;
       return data ? mapCustomer(data) : null;
+    },
+
+    async setCustomerOptOut(customerId, optedOut) {
+      const { error } = await (client as unknown as SupabaseClient)
+        .from("customers")
+        .update({ opted_out: optedOut })
+        .eq("id", customerId);
+      if (error) throw error;
     },
 
     async updateCustomerFullName(customerId, fullName) {

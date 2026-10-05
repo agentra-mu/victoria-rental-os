@@ -59,6 +59,10 @@ export function createFakeMessagingDb(
       );
     },
 
+    async setCustomerOptOut() {
+      // opt-out state isn't modelled in the fake
+    },
+
     async updateCustomerFullName(customerId, fullName) {
       const customer = Array.from(customers.values()).find(
         (c) => c.id === customerId,

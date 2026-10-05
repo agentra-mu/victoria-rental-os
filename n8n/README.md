@@ -120,3 +120,15 @@ they are to actually be wrong:
 None of these affect the actual business logic (all of that is backend-side and unit-tested) —
 worst case, a node needs its condition or body re-entered by hand in the n8n editor, using the
 plain-English description above as the source of truth.
+
+## Scheduled notifications (choose ONE scheduler)
+
+`/api/cron/notifications` sends reminders, nudges, thank-yous, the 07:30 owner digest,
+fleet-document alerts, change-request expiry and the human-mode reminder.
+
+- **(a) Vercel Cron** — `vercel.json` already calls it every 15 minutes. Set `CRON_SECRET`
+  in Vercel (Vercel sends it as a Bearer token). Note: Hobby plans only allow daily crons;
+  15-minute schedules need Pro.
+- **(b) n8n** — import `n8n/scheduled-notifications.json` (Schedule Trigger → HTTP POST with
+  `x-internal-secret`). If you use this, remove `vercel.json` so it doesn't run twice
+  (it's safe anyway: every send is recorded in `scheduled_messages`, so nothing is sent twice).

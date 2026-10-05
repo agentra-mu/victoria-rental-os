@@ -11,6 +11,7 @@ import { createSupabaseMessagingDb } from "@/lib/db/messagingDb";
 import { escalateBookingToHuman } from "@/lib/domain/escalateBookingToHuman";
 import { createAnthropicModelClient } from "@/lib/agent/client";
 import { runAgentTurn } from "@/lib/agent/runAgent";
+import { alertError } from "@/lib/monitoring/log";
 import { handleInboundMessage, type InboundDeps } from "@/lib/whatsapp/inbound";
 
 const bodySchema = z.object({
@@ -54,16 +55,24 @@ export async function POST(request: Request) {
       escalateBookingToHuman: async (bookingId) => {
         await escalateBookingToHuman(bookingDb, bookingId);
       },
-      runAgent: (conversationId) =>
-        runAgentTurn(
+      runAgent: async (conversationId) => {
+        const replies = await runAgentTurn(
           { domainDb: bookingDb, messaging: messagingDb, model },
           conversationId,
-        ),
+        );
+        // The post-takeover summary is shown to the agent once, then cleared.
+        await client
+          .from("conversations")
+          .update({ human_summary: null })
+          .eq("id", conversationId);
+        return replies;
+      },
     };
 
     const result = await handleInboundMessage(deps, payload);
     return jsonOk(result);
   } catch (error) {
+    await alertError("whatsapp.inbound failed", error);
     return jsonError(error);
   }
 }
