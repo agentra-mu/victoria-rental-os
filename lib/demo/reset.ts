@@ -28,6 +28,14 @@ export async function resetDemoConversation(
     if (conversationIds.length > 0) {
       await db.from("messages").delete().in("conversation_id", conversationIds);
       await db
+        .from("bot_turns")
+        .delete()
+        .in("conversation_id", conversationIds);
+      await db
+        .from("llm_calls")
+        .delete()
+        .in("conversation_id", conversationIds);
+      await db
         .from("conversations")
         .update({
           mode: "AI",
@@ -49,7 +57,18 @@ export async function resetDemoConversation(
         .from("owner_notifications")
         .delete()
         .in("booking_id", ids)
-        .in("type", ["DELAY", "PICKUP_CHANGE", "EXTENSION_REQUEST", "OTHER"]);
+        .in("type", [
+          "DELAY",
+          "PICKUP_CHANGE",
+          "EXTENSION_REQUEST",
+          "CHANGE_REQUEST",
+          "OTHER",
+        ]);
+      await db
+        .from("booking_change_requests")
+        .delete()
+        .in("booking_id", ids)
+        .eq("status", "PENDING");
     }
     return { removedCustomer: false };
   }
@@ -92,6 +111,12 @@ export async function resetDemoConversation(
     await step(db.from("bookings").delete().in("id", bookingIds));
   }
   if (conversationIds.length > 0) {
+    await step(
+      db.from("bot_turns").delete().in("conversation_id", conversationIds),
+    );
+    await step(
+      db.from("llm_calls").delete().in("conversation_id", conversationIds),
+    );
     await step(
       db.from("messages").delete().in("conversation_id", conversationIds),
     );

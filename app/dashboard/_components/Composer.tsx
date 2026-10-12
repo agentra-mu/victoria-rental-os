@@ -9,11 +9,14 @@ export default function Composer({
   withinWindow,
   snippets,
   templates,
+  llmEnabled,
 }: {
   conversationId: string;
   withinWindow: boolean;
   snippets: { id: string; label: string; body: string }[];
   templates: { kind: string; template_name: string }[];
+  /** The AI suggestion button only exists when LLM_ENABLED=true. */
+  llmEnabled: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,24 +84,26 @@ export default function Composer({
             {s.label}
           </button>
         ))}
-        <button
-          type="button"
-          className="rounded-full border border-purple-300 px-2 py-1 text-xs text-purple-800"
-          disabled={pending}
-          onClick={() =>
-            start(async () => {
-              setError(null);
-              try {
-                const text = await draftReply(conversationId);
-                if (ref.current) ref.current.value = text;
-              } catch (e) {
-                setError(e instanceof Error ? e.message : "Draft failed");
-              }
-            })
-          }
-        >
-          ✨ Suggest reply
-        </button>
+        {llmEnabled && (
+          <button
+            type="button"
+            className="rounded-full border border-purple-300 px-2 py-1 text-xs text-purple-800"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                setError(null);
+                try {
+                  const text = await draftReply(conversationId);
+                  if (ref.current) ref.current.value = text;
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Draft failed");
+                }
+              })
+            }
+          >
+            ✨ Suggest reply
+          </button>
+        )}
       </div>
       <form action={send} className="flex gap-2">
         <input type="hidden" name="conversationId" value={conversationId} />

@@ -18,6 +18,7 @@ interface Loc {
   after_hours_allowed: boolean;
   after_hours_fee_rs: number;
   active: boolean;
+  aliases: string[] | null;
   opening_hours: Record<string, [string, string] | null> | null;
 }
 
@@ -43,6 +44,12 @@ function LocationForm({
         defaultValue={l?.instructions ?? ""}
         placeholder="Instructions sent to the customer (e.g. airport meeting point)"
         rows={2}
+        className={input}
+      />
+      <input
+        name="aliases"
+        defaultValue={(l?.aliases ?? []).join(", ")}
+        placeholder="Other names customers use, comma separated (e.g. airport, SSR, aéroport)"
         className={input}
       />
       <input
@@ -162,6 +169,10 @@ export default async function Locations() {
         name: String(fd.get("name")),
         instructions: String(fd.get("instructions") || "") || null,
         google_maps_url: String(fd.get("google_maps_url") || "") || null,
+        aliases: String(fd.get("aliases") || "")
+          .split(",")
+          .map((w) => w.trim())
+          .filter(Boolean),
         extra_fee_rs: Number(fd.get("extra_fee_rs")) || 0,
         after_hours_fee_rs: Number(fd.get("after_hours_fee_rs")) || 0,
         is_pickup: fd.get("is_pickup") === "on",

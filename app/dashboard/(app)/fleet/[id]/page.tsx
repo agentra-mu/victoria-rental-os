@@ -1,3 +1,4 @@
+import { invalidateBotCaches } from "@/lib/bot/cache";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -62,6 +63,7 @@ export default async function VehiclePage({
       })
       .eq("id", id);
     await audit(staff, "vehicle.update", "vehicle", id);
+    invalidateBotCaches();
     revalidatePath(`/dashboard/fleet/${id}`);
   }
   async function addMaintenance(fd: FormData) {

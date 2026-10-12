@@ -56,9 +56,22 @@ export async function GET(request: Request) {
   const { data: messages } = conv
     ? await db
         .from("messages")
-        .select("direction, sender, body, created_at")
+        .select(
+          "direction, sender, body, created_at, whatsapp_message_id, handled_by, generated_by",
+        )
         .eq("conversation_id", conv.id)
         .order("created_at")
+    : { data: [] };
+  // What the bot decided for each inbound message: layer, what matched, what it parsed.
+  const { data: turns } = conv
+    ? await db
+        .from("bot_turns")
+        .select(
+          "message_id, layer, matched, step, next_step, total_ms, db_ms, llm_calls, parsed, unrecognised",
+        )
+        .eq("conversation_id", conv.id)
+        .order("created_at", { ascending: false })
+        .limit(100)
     : { data: [] };
   const { data: booking } = await db
     .from("bookings")
@@ -70,6 +83,7 @@ export async function GET(request: Request) {
     .maybeSingle();
   return NextResponse.json({
     messages,
+    turns,
     booking: booking
       ? { number: booking.booking_number, status: booking.status }
       : null,

@@ -6,7 +6,10 @@ import { getServiceSupabase } from "@/lib/supabase/server";
 import { createSupabaseMessagingDb } from "@/lib/db/messagingDb";
 import { sendTemplateMessage, sendTextMessage } from "@/lib/whatsapp/send";
 import { returnToAI, takeOverConversation } from "@/lib/domain/takeover";
-import { suggestReply, summarizeTakeover } from "@/lib/agent/assist";
+import { buildTakeoverDigest } from "@/lib/bot/digest";
+import { createSupabaseLlmLog } from "@/lib/db/botDb";
+import { isLlmEnabled } from "@/lib/llm";
+import { suggestReplyText, summariseConversation } from "@/lib/llm/ownerTools";
 
 function messaging() {
   return createSupabaseMessagingDb(getServiceSupabase() as never);
@@ -41,7 +44,10 @@ export async function takeOver(formData: FormData) {
 export async function handBackToAI(formData: FormData) {
   const staff = await requireAction("takeover");
   const id = String(formData.get("conversationId"));
-  await returnToAI(getServiceSupabase(), id, summarizeTakeover);
+  // Deterministic digest (counts, times, last team messages) — no model involved.
+  await returnToAI(getServiceSupabase(), id, async (t) =>
+    buildTakeoverDigest(t),
+  );
   await audit(staff, "conversation.return_to_ai", "conversation", id);
   revalidatePath("/dashboard", "layout");
 }
@@ -103,22 +109,53 @@ export async function assignConversation(formData: FormData) {
   revalidatePath("/dashboard", "layout");
 }
 
-/** Drafts a reply with Claude from the recent thread — returned to the owner to edit, never sent. */
-export async function draftReply(conversationId: string): Promise<string> {
-  await requireAction("inbox");
+async function recentThread(conversationId: string, limit: number) {
   const { data } = await getServiceSupabase()
     .from("messages")
     .select("sender, body")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: false })
-    .limit(15);
-  const thread = (data ?? [])
+    .limit(limit);
+  return (data ?? [])
     .reverse()
     .map((m) => `${m.sender === "customer" ? "Customer" : "Team"}: ${m.body}`)
     .join("\n");
-  return suggestReply(
-    `Recent conversation:\n${thread}\n\nDraft the next team reply.`,
+}
+
+async function customerIdOf(conversationId: string): Promise<string> {
+  return (await loadConversation(conversationId)).customerId;
+}
+
+/**
+ * Optional, explicit click, only when the LLM is enabled (the button is
+ * hidden otherwise): drafts a reply for the owner to edit. Never sent.
+ */
+export async function draftReply(conversationId: string): Promise<string> {
+  await requireAction("inbox");
+  if (!isLlmEnabled()) throw new Error("The AI helper is not enabled.");
+  return suggestReplyText(
+    createSupabaseLlmLog(getServiceSupabase()),
+    { conversationId, customerId: await customerIdOf(conversationId) },
+    await recentThread(conversationId, 15),
   );
+}
+
+/** Optional "Summarise with AI": replaces the handover digest with a model-written summary. */
+export async function summariseWithAI(formData: FormData) {
+  const staff = await requireAction("takeover");
+  if (!isLlmEnabled()) throw new Error("The AI helper is not enabled.");
+  const id = String(formData.get("conversationId"));
+  const summary = await summariseConversation(
+    createSupabaseLlmLog(getServiceSupabase()),
+    { conversationId: id, customerId: await customerIdOf(id) },
+    await recentThread(id, 30),
+  );
+  await getServiceSupabase()
+    .from("conversations")
+    .update({ human_summary: summary })
+    .eq("id", id);
+  await audit(staff, "conversation.summarise_ai", "conversation", id);
+  revalidatePath("/dashboard", "layout");
 }
 
 /** Sends a message to the customer in the booking context (used by booking actions). */

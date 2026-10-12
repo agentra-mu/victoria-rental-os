@@ -4,8 +4,10 @@ import { can, type StaffIdentity } from "@/lib/domain/permissions";
 import {
   assignConversation,
   handBackToAI,
+  summariseWithAI,
   takeOver,
 } from "../_actions/conversation";
+import { isLlmEnabled } from "@/lib/llm";
 import Composer from "./Composer";
 import AutoRefresh from "./AutoRefresh";
 import { btn, fmtDateTime } from "./ui";
@@ -28,7 +30,7 @@ export default async function ConversationPanel({
   ] = await Promise.all([
     db
       .from("conversations")
-      .select("id, mode, assigned_to, taken_over_at")
+      .select("id, mode, assigned_to, taken_over_at, human_summary")
       .eq("id", conversationId)
       .single(),
     db
@@ -50,6 +52,7 @@ export default async function ConversationPanel({
   const withinWindow = isWithin24hWindow(lastInbound, new Date());
   const human = conv.mode === "HUMAN";
   const mayTakeover = can(staff, "takeover");
+  const llmEnabled = isLlmEnabled();
 
   const style: Record<string, string> = {
     customer: "bg-white border mr-8",
@@ -60,18 +63,31 @@ export default async function ConversationPanel({
   return (
     <div>
       <AutoRefresh seconds={6} />
+      {conv.human_summary && (
+        <div className="mb-2 rounded border border-zinc-200 bg-zinc-50 p-2 text-xs whitespace-pre-wrap text-zinc-700">
+          <b>Handover digest</b>
+          {"\n"}
+          {conv.human_summary}
+        </div>
+      )}
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span
           className={`rounded px-2 py-0.5 text-xs font-medium ${human ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}
         >
-          {human ? "HUMAN mode — AI is silent" : "AI handling"}
+          {human ? "HUMAN mode — bot is silent" : "Bot handling"}
         </span>
         {mayTakeover && (
           <form action={human ? handBackToAI : takeOver}>
             <input type="hidden" name="conversationId" value={conversationId} />
             <button className={btn}>
-              {human ? "Return to AI" : "Take over conversation"}
+              {human ? "Return to bot" : "Take over conversation"}
             </button>
+          </form>
+        )}
+        {mayTakeover && llmEnabled && (
+          <form action={summariseWithAI}>
+            <input type="hidden" name="conversationId" value={conversationId} />
+            <button className={btn}>✨ Summarise with AI</button>
           </form>
         )}
         <form
@@ -116,6 +132,7 @@ export default async function ConversationPanel({
           withinWindow={withinWindow}
           snippets={snippets ?? []}
           templates={templates ?? []}
+          llmEnabled={llmEnabled}
         />
       )}
       {!human && mayTakeover && (

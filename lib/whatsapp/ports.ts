@@ -18,6 +18,8 @@ export interface CustomerRow {
   customerCode: string;
   whatsappNumber: string;
   fullName: string | null;
+  /** Detected from the customer's messages (lib/bot/parsers/language.ts); null until known. */
+  preferredLanguage?: "en" | "fr" | null;
 }
 
 /**
@@ -43,6 +45,10 @@ export interface StoreMessageInput {
   body: string;
   /** Present for inbound messages (used to dedupe); null for most outbound sends. */
   whatsappMessageId?: string | null;
+  /** Which bot layer produced an outbound message (messages.handled_by). */
+  handledBy?: string | null;
+  /** 'llm' when the text was produced by the optional model (messages.generated_by). */
+  generatedBy?: string | null;
 }
 
 export interface MessageRow {
@@ -67,6 +73,20 @@ export interface CreateOwnerNotificationInput {
  * context, same "narrow port + injected fake for tests" pattern.
  */
 export interface MessagingDb {
+  /**
+   * Customer + conversation for a WhatsApp number in as few round trips as
+   * possible (one joined read when both exist), creating either if missing.
+   */
+  loadCustomerAndConversation(
+    whatsappNumber: string,
+  ): Promise<{ customer: CustomerRow; conversation: ConversationRow }>;
+  /**
+   * Stores an inbound message unless its whatsapp_message_id was already
+   * stored — race-safe under webhook retries (relies on the unique index).
+   * Returns false for a duplicate.
+   */
+  storeInboundIfNew(input: StoreMessageInput): Promise<boolean>;
+  setCustomerLanguage(customerId: string, language: "en" | "fr"): Promise<void>;
   findMessageByWhatsAppId(
     whatsappMessageId: string,
   ): Promise<{ id: string } | null>;

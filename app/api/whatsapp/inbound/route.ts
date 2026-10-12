@@ -6,13 +6,10 @@ import {
   readJsonBody,
 } from "@/lib/api/http";
 import { getServiceSupabase } from "@/lib/supabase/server";
-import { createSupabaseDomainDb } from "@/lib/db/domainDb";
-import { createSupabaseMessagingDb } from "@/lib/db/messagingDb";
-import { escalateBookingToHuman } from "@/lib/domain/escalateBookingToHuman";
-import { createAnthropicModelClient } from "@/lib/agent/client";
-import { runAgentTurn } from "@/lib/agent/runAgent";
+import { createBotDeps } from "@/lib/bot/deps";
+import { handleTurn } from "@/lib/bot/handleTurn";
 import { alertError } from "@/lib/monitoring/log";
-import { handleInboundMessage, type InboundDeps } from "@/lib/whatsapp/inbound";
+import { handleInboundMessage } from "@/lib/whatsapp/inbound";
 
 const bodySchema = z.object({
   from: z.string().min(1),
@@ -32,10 +29,9 @@ const bodySchema = z.object({
 
 /**
  * Called by the n8n inbound workflow (/n8n/whatsapp-inbound.json) for every
- * WhatsApp message. Dedupes on whatsapp_message_id, finds/creates the
- * customer and conversation, stores the message, handles the HUMAN-takeover
- * flow, and otherwise calls the (stub, for now) AI agent. See
- * /lib/whatsapp/inbound.ts for the actual logic — this file is just wiring.
+ * WhatsApp message; n8n has already acknowledged Meta's webhook with a 200.
+ * The conversation logic is lib/bot/handleTurn.ts (deterministic; an LLM is an
+ * optional last resort) — this file is just wiring.
  */
 export async function POST(request: Request) {
   const authError = checkInternalSecret(request);
@@ -44,32 +40,17 @@ export async function POST(request: Request) {
   try {
     const payload = bodySchema.parse(await readJsonBody(request));
 
-    const client = getServiceSupabase();
-    const bookingDb = createSupabaseDomainDb(client);
-    const messagingDb = createSupabaseMessagingDb(client);
-    const model = createAnthropicModelClient();
-    const deps: InboundDeps = {
-      messaging: messagingDb,
-      getActiveBookingForCustomer: (customerId) =>
-        bookingDb.getActiveBookingForCustomer(customerId),
-      escalateBookingToHuman: async (bookingId) => {
-        await escalateBookingToHuman(bookingDb, bookingId);
+    const botDeps = createBotDeps(getServiceSupabase());
+    const result = await handleInboundMessage(
+      {
+        messaging: botDeps.messaging,
+        getActiveBookingForCustomer: (customerId) =>
+          botDeps.domainDb.getActiveBookingForCustomer(customerId),
+        runBot: (conversationId, message, preloaded) =>
+          handleTurn(botDeps, conversationId, message, preloaded),
       },
-      runAgent: async (conversationId) => {
-        const replies = await runAgentTurn(
-          { domainDb: bookingDb, messaging: messagingDb, model },
-          conversationId,
-        );
-        // The post-takeover summary is shown to the agent once, then cleared.
-        await client
-          .from("conversations")
-          .update({ human_summary: null })
-          .eq("id", conversationId);
-        return replies;
-      },
-    };
-
-    const result = await handleInboundMessage(deps, payload);
+      payload,
+    );
     return jsonOk(result);
   } catch (error) {
     await alertError("whatsapp.inbound failed", error);

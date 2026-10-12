@@ -33,6 +33,32 @@ export function createFakeMessagingDb(
   const notifications: StoredNotification[] = [];
 
   const db: MessagingDb = {
+    async loadCustomerAndConversation(whatsappNumber) {
+      const customer = await db.findOrCreateCustomer(whatsappNumber);
+      return {
+        customer,
+        conversation: await db.getOrCreateConversation(customer.id),
+      };
+    },
+
+    async storeInboundIfNew(input) {
+      if (
+        input.whatsappMessageId &&
+        messages.some((m) => m.whatsappMessageId === input.whatsappMessageId)
+      ) {
+        return false;
+      }
+      await db.storeMessage(input);
+      return true;
+    },
+
+    async setCustomerLanguage(customerId, language) {
+      const customer = Array.from(customers.values()).find(
+        (c) => c.id === customerId,
+      );
+      if (customer) customer.preferredLanguage = language;
+    },
+
     async findMessageByWhatsAppId(whatsappMessageId) {
       const found = messages.find(
         (m) => m.whatsappMessageId === whatsappMessageId,

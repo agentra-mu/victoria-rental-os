@@ -59,7 +59,7 @@ logs and staff roles.
 ## Stack
 
 Next.js on Vercel · Supabase (Postgres, Auth, private Storage) · n8n (WhatsApp
-orchestration only) · Claude API (conversation agent and document extraction) · WhatsApp
+orchestration only) · deterministic bot in `/lib/bot` with an optional LLM fallback · WhatsApp
 Business Cloud API.
 
 ## How to use this
@@ -85,3 +85,27 @@ Business Cloud API.
    Encode it in one pricing function.
 3. **WhatsApp's 24-hour rule.** Reminders fall outside the free-form window and need
    pre-approved template messages — submit them to Meta early.
+
+## Optional LLM (off by default)
+
+The chatbot is rule-based and complete without any model (`LLM_ENABLED=false`). If you want a model to
+help with free text the rules didn't understand, point the provider interface (`/lib/llm`) at any
+**OpenAI-compatible** endpoint — nothing vendor-specific is used (no tool calling; plain JSON output
+validated with zod, one automatic retry).
+
+```bash
+# Free tier, hosted (examples — check each provider's current free models and limits):
+LLM_ENABLED=true  LLM_PROVIDER=openai_compatible
+LLM_BASE_URL=https://openrouter.ai/api/v1         LLM_MODEL=meta-llama/llama-3.3-70b-instruct:free   LLM_API_KEY=sk-or-...
+# or Groq:   LLM_BASE_URL=https://api.groq.com/openai/v1                       LLM_MODEL=llama-3.1-8b-instant
+# or Gemini: LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai   LLM_MODEL=gemini-2.0-flash
+# Local (Ollama, llama.cpp server, vLLM) — no key, no limits, runs on your own machine:
+LLM_BASE_URL=http://localhost:11434/v1            LLM_MODEL=qwen2.5:7b      LLM_API_KEY=
+```
+
+Free tiers have **rate limits** (requests per minute/day) and may change or disappear, which is why the
+bot caps itself: at most 1 call per message, 6 per conversation and 15 per customer per day, a 4 s
+timeout, and a 24 h cache; when a cap, timeout or error hits, the customer simply gets the menu and
+"Talk to someone". Every call is logged in `llm_calls` and visible under Dashboard → Analytics.
+Some small models ignore JSON mode — set `LLM_JSON_MODE=false` if the server rejects `response_format`.
+See `MIGRATION_NOTES.md` for every setting.

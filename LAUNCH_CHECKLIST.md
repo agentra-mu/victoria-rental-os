@@ -11,7 +11,7 @@
 ## Environment (Vercel)
 
 - [ ] `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] `ANTHROPIC_API_KEY` (+ optional `ANTHROPIC_MODEL`)
+- [ ] _(optional)_ `LLM_ENABLED=true` + `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` — the bot works without a model
 - [ ] `APP_URL` (public https URL), `INTERNAL_API_SECRET`, `CRON_SECRET` (if Vercel Cron)
 - [ ] `OWNER_WHATSAPP_NUMBER`, `ALERT_WEBHOOK_URL` (hook that emails/pings the admin), optional `REVIEW_LINK`
 - [ ] `ENABLE_SIMULATOR` is **unset** in production (set to `true` temporarily only for owner testing)
@@ -44,7 +44,7 @@
 ## Pre-launch tests
 
 - [ ] `npm test`, `npm run lint`, `npm run typecheck`, `npm run format:check`
-- [ ] `npm run evals` against the real Claude API reviewed
+- [ ] `npm test` passes (the bot-flow tests replace the old LLM evals); Analytics → Chatbot → _Top unrecognised phrases_ reviewed after the first week
 - [ ] `npm run e2e` against a staging database
 - [ ] Owner has run a full booking through `/dev/simulator`
 - [ ] Real-phone test: booking, HEIC passport photo upload, approve, mark paid
@@ -54,4 +54,4 @@
 - Document verification is a stub: uploads always land in NEEDS_REVIEW for a human (never auto-verified or auto-rejected).
 - The upload-page rate limiter is per server instance (needs a shared store for multi-instance hardening).
 - Dashboard pages refresh by polling (6–15s), not Supabase Realtime.
-- Vehicle auto-assignment (`lib/domain/assignVehicle.ts`) is available to the engine but the agent still books a specific car; reassignment from the booking page/calendar is the owner's tool.
+- Vehicle auto-assignment (`lib/domain/assignVehicle.ts`) is available to the engine but the bot still books a specific car; reassignment from the booking page/calendar is the owner's tool.

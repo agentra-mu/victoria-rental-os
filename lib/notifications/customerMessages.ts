@@ -2,7 +2,7 @@ import "server-only";
 import { getServiceSupabase } from "@/lib/supabase/server";
 import { createSupabaseMessagingDb } from "@/lib/db/messagingDb";
 import { sendTextMessage } from "@/lib/whatsapp/send";
-import { COMPANY_NAME } from "@/lib/agent/config";
+import { COMPANY_NAME } from "@/lib/bot/config";
 
 export const customerMessages = {
   documentsVerified: (totalRs: number) =>

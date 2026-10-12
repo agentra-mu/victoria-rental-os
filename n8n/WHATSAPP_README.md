@@ -2,7 +2,7 @@
 
 n8n is thin orchestration only (CLAUDE.md): it receives WhatsApp webhooks, calls one backend
 endpoint, and relays the backend's reply back to WhatsApp. All the actual logic — dedupe,
-customer lookup, takeover detection, the AI agent — lives in the Next.js app
+customer lookup, takeover detection, the bot (`lib/bot`, rule-based; an optional LLM fallback) — lives in the Next.js app
 (`/app/api/whatsapp/inbound`, `/lib/whatsapp/*`), so it's unit-tested and portable if you ever
 drop n8n.
 

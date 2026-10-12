@@ -1,3 +1,6 @@
+> **Superseded.** This status snapshot describes the demo before the deterministic-bot refactor (see `MIGRATION_NOTES.md`): the
+> n8n/Gemini chatbot, `/lib/agent` and `/api/demo/tools` it mentions no longer exist; `/demo` now runs the built-in bot.
+
 # Demo audit — status report (Phase 1)
 
 Audit date: 2026-10-11. Read-only; nothing was fixed. Baseline checks run on `main` (clean tree).

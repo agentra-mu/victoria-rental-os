@@ -1,13 +1,12 @@
 /**
- * End-to-end demo test against the LIVE stack: n8n chatbot -> app -> Supabase -> dashboard.
+ * End-to-end demo test against the LIVE stack: chat endpoint -> bot -> Supabase -> dashboard.
  * Run: npm run demo:e2e [-- https://your-app.vercel.app]
  *
- * It talks to the n8n Chat Trigger exactly like the /demo widget does, then checks the
+ * It talks to /api/demo/chat/send exactly like the /demo chat does, then checks the
  * database and logs into the dashboard (as a temporary staff user, deleted at the end)
  * to simulate document verification and mark the booking paid.
- * Uses a disposable demo number, so it leaves nothing behind. LLM wording varies, so it
- * asserts outcomes (booking, price, status, no PAID, refusals), not exact text.
- * Needs a reachable Gemini quota: replies are spaced out to respect the free tier.
+ * Uses a disposable demo number, so it leaves nothing behind. The bot is deterministic,
+ * so no waiting between messages and no model quota involved.
  */
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
@@ -17,13 +16,12 @@ const appUrl = (arg ?? process.env.APP_URL ?? "http://localhost:3000").replace(
   /\/$/,
   "",
 );
-const chatUrl = process.env.NEXT_PUBLIC_N8N_CHAT_URL ?? "";
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const ANON_KEY = process.env.SUPABASE_ANON_KEY ?? "";
-if (!chatUrl || !SUPABASE_URL || !SERVICE_KEY || !ANON_KEY) {
+if (!SUPABASE_URL || !SERVICE_KEY || !ANON_KEY) {
   console.error(
-    "Need NEXT_PUBLIC_N8N_CHAT_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and SUPABASE_ANON_KEY in .env.local",
+    "Need SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and SUPABASE_ANON_KEY in .env.local",
   );
   process.exit(1);
 }
@@ -31,9 +29,6 @@ if (!chatUrl || !SUPABASE_URL || !SERVICE_KEY || !ANON_KEY) {
 const db = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const GAP_MS = Number(process.env.E2E_GAP_MS ?? 4000);
-const FALLBACK = /having trouble right now/i;
 
 let failures = 0;
 function report(ok: boolean, name: string, detail = "") {
@@ -51,42 +46,44 @@ async function resetChat(number: string) {
   });
 }
 
-/** Sends one message the way the widget does. Retries when the bot returns its error fallback. */
-async function say(number: string, session: string, text: string) {
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    await sleep(GAP_MS);
-    const res = await fetch(chatUrl, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        origin: appUrl,
-      },
-      body: JSON.stringify({
-        action: "sendMessage",
-        chatInput: text,
-        metadata: { whatsapp_number: number, session_key: session },
-      }),
-    });
-    const raw = await res.text();
-    let reply = "";
-    try {
-      const json = JSON.parse(raw);
-      reply = String(json.output ?? json.text ?? json.message ?? raw);
-    } catch {
-      reply = raw;
-    }
-    if (res.ok && !FALLBACK.test(reply) && reply.trim()) {
-      console.log(
-        `  you: ${text}\n  bot: ${reply.replace(/\n/g, "\n       ")}`,
-      );
-      return reply;
-    }
-    console.log(
-      `  (attempt ${attempt} failed: HTTP ${res.status} ${reply.slice(0, 120)})`,
-    );
-    await sleep(15000);
-  }
-  return "";
+/** Sends one message the way the /demo chat does; returns the reply text plus the titles of any buttons/rows. */
+async function say(number: string, _session: string, text: string) {
+  const res = await fetch(`${appUrl}/api/demo/chat/send`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ whatsapp_number: number, text }),
+  });
+  const json = (await res.json()) as {
+    data?: {
+      replies?: {
+        type: string;
+        text?: string;
+        interactive?: {
+          body: { text: string };
+          action: {
+            buttons?: { reply: { title: string } }[];
+            sections?: { rows: { title: string }[] }[];
+          };
+        };
+      }[];
+      debug?: { layer?: string } | null;
+    };
+  };
+  const reply = (json.data?.replies ?? [])
+    .map((r) =>
+      r.type === "text"
+        ? r.text
+        : `${r.interactive?.body.text}\n[${[
+            ...(r.interactive?.action.buttons?.map((b) => b.reply.title) ?? []),
+            ...(r.interactive?.action.sections?.[0]?.rows.map((x) => x.title) ??
+              []),
+          ].join(" | ")}]`,
+    )
+    .join("\n");
+  console.log(
+    `  you: ${text}\n  bot (${json.data?.debug?.layer ?? "?"}): ${reply.replace(/\n/g, "\n       ")}`,
+  );
+  return reply;
 }
 
 async function dashboardSession() {
@@ -172,23 +169,18 @@ async function conversationA() {
       /1,?400/.test(fleet) && /3,?500/.test(fleet),
       "car list shows DB prices (Vitz 1,400 ... Tucson 3,500)",
     );
-    await say(
-      number,
-      session,
-      "I'd like a Toyota Vitz from tomorrow 10am for 3 days",
-    );
-    await say(
-      number,
-      session,
-      "Pick up at the airport and drop off in Grand Baie",
-    );
+    await say(number, session, "Toyota Vitz");
+    await say(number, session, "tomorrow 10am");
+    await say(number, session, "3 days");
+    await say(number, session, "airport");
+    await say(number, session, "Grand Baie");
     const quote = await say(number, session, "Aisha Rahman");
     report(
       /4,?700/.test(quote),
       "price summary is Rs 4,700 (3 x 1,400 + airport 500)",
       quote.slice(0, 80),
     );
-    const confirmed = await say(number, session, "Yes, confirm");
+    const confirmed = await say(number, session, "Yes");
     report(
       !/\bpaid\b.*\b(received|confirmed)\b/i.test(confirmed),
       "bot never claims payment",
@@ -361,18 +353,19 @@ async function conversationC() {
   const session = `demo-e2e-${Date.now().toString(36)}`;
   await resetChat(number);
   try {
-    const hi = await say(number, session, "Hi");
+    const card = await say(number, session, "my booking");
     report(
-      /priya/i.test(hi),
-      "recognises the existing customer",
-      hi.slice(0, 60),
+      /vitz/i.test(card),
+      "shows the existing customer's booking from the database",
+      card.slice(0, 60),
     );
-    const late = await say(
-      number,
-      session,
-      "I'm going to return the car 2 hours late",
+    await say(number, session, "I'm going to return the car 2 hours late");
+    await say(number, session, "2 hours");
+    const late = await say(number, session, "yes");
+    report(
+      /sent to our team/i.test(late) && !/\bis approved\b/i.test(late),
+      "says the request was sent to the team, not approved",
     );
-    report(!/\bapproved\b/i.test(late), "does not say the delay is approved");
     const { data: cust } = await db
       .from("customers")
       .select("id")
@@ -389,10 +382,10 @@ async function conversationC() {
         "booking_id",
         (bk ?? []).map((b) => b.id as string),
       )
-      .eq("type", "DELAY");
+      .eq("type", "CHANGE_REQUEST");
     report(
       (notes ?? []).length > 0,
-      "DELAY notification created for the owner",
+      "change-request notification created for the owner",
     );
   } finally {
     await resetChat(number);
@@ -400,7 +393,7 @@ async function conversationC() {
 }
 
 const only = process.argv.find((a) => /^--only=/.test(a))?.slice(7);
-console.log(`Demo e2e against ${appUrl}\nn8n: ${new URL(chatUrl).host}`);
+console.log(`Demo e2e against ${appUrl}`);
 try {
   if (!only || only === "a") await conversationA();
   if (!only || only === "b") await conversationB();

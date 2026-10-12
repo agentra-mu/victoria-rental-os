@@ -1,5 +1,7 @@
 import { requireStaff } from "@/lib/dashboard/auth";
 import { loadAnalyticsInput } from "@/lib/analytics/load";
+import { loadBotAnalyticsInput } from "@/lib/analytics/botLoad";
+import { computeBotMetrics } from "@/lib/analytics/botMetrics";
 import {
   computeMetrics,
   previousPeriod,
@@ -64,7 +66,11 @@ export default async function Analytics({
           ),
         }
       : def;
-  const data = await loadAnalyticsInput();
+  const [data, botInput] = await Promise.all([
+    loadAnalyticsInput(),
+    loadBotAnalyticsInput(period),
+  ]);
+  const bot = computeBotMetrics(botInput.turns, botInput.llmCalls);
   const cur = computeMetrics(data, period);
   const prev = computeMetrics(data, previousPeriod(period));
   const fromKey = period.start.toLocaleDateString("en-CA", {
@@ -113,6 +119,64 @@ export default async function Analytics({
         />
         <Stat label="Cancelled" value={cur.bookings.cancelled} />
         <Stat label="Active now" value={cur.bookings.active} />
+      </div>
+
+      <h2 className="mb-2 text-lg font-semibold text-zinc-900">Chatbot</h2>
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <Stat
+          label="Turns handled without an LLM"
+          value={bot.pctWithoutLlm === null ? "—" : `${bot.pctWithoutLlm}%`}
+        />
+        <Stat
+          label={`Bookings with zero LLM calls (of ${bot.bookingsConfirmed})`}
+          value={
+            bot.pctBookingsWithoutLlm === null
+              ? "—"
+              : `${bot.pctBookingsWithoutLlm}%`
+          }
+        />
+        <Stat
+          label="Avg turn time (server)"
+          value={bot.avgTurnMs === null ? "—" : `${bot.avgTurnMs} ms`}
+        />
+        <Stat
+          label="Slowest 5% of turns"
+          value={bot.p95TurnMs === null ? "—" : `${bot.p95TurnMs} ms`}
+        />
+        <Stat label="Messages not understood" value={bot.unrecognised} />
+      </div>
+      <div className="mb-4 grid gap-4 md:grid-cols-3">
+        <Card title="Who answered">
+          <Bars
+            fmt={String}
+            rows={bot.byLayer.map((r) => ({
+              name: r.layer.replace(/_/g, " "),
+              value: r.turns,
+            }))}
+          />
+        </Card>
+        <Card title="LLM fallback calls per day">
+          <Bars
+            fmt={String}
+            rows={bot.fallbackPerDay.map((r) => ({
+              name: r.day,
+              value: r.calls,
+            }))}
+          />
+        </Card>
+        <Card title="Top unrecognised phrases — add these to the knowledge base or lexicon">
+          <ul className="text-sm">
+            {bot.topUnrecognised.map((p) => (
+              <li key={p.phrase} className="flex justify-between gap-2">
+                <span className="truncate">{p.phrase}</span>
+                <b>{p.count}</b>
+              </li>
+            ))}
+            {bot.topUnrecognised.length === 0 && (
+              <li className="text-zinc-500">None 🎉</li>
+            )}
+          </ul>
+        </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

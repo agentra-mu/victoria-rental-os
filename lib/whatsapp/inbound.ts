@@ -1,5 +1,9 @@
 import type { BookingStatus } from "@/lib/domain/bookingStatus";
-import { replyBodyText, textReply, type WhatsAppReply } from "./replies";
+import type { InboundMessage } from "@/lib/bot/handleTurn";
+import { matchCommand } from "@/lib/bot/lexicon";
+import { getTemplates } from "@/lib/bot/templates";
+import type { HandledBy, TurnResult } from "@/lib/bot/types";
+import { replyBodyText, type WhatsAppReply } from "./replies";
 import type { ConversationRow, CustomerRow, MessagingDb } from "./ports";
 
 export type InboundMessageType =
@@ -20,6 +24,8 @@ export interface InboundMessagePayload {
 export interface InboundResult {
   replies: WhatsAppReply[];
   notifyOwner?: { title: string; body?: string };
+  /** Which bot layer answered, and what it parsed — shown in /dev/simulator. */
+  debug?: { layer: HandledBy; trace: TurnResult["trace"] };
 }
 
 /**
@@ -32,11 +38,13 @@ export interface InboundDeps {
   getActiveBookingForCustomer(
     customerId: string,
   ): Promise<{ id: string; status: BookingStatus } | null>;
-  escalateBookingToHuman(bookingId: string): Promise<void>;
-  runAgent(conversationId: string): Promise<WhatsAppReply[]>;
+  /** The bot: lib/bot/handleTurn.ts in production. */
+  runBot(
+    conversationId: string,
+    message: InboundMessage,
+    preloaded: { customer: CustomerRow; conversation: ConversationRow },
+  ): Promise<TurnResult>;
 }
-
-const HUMAN_TAKEOVER_WORDS = new Set(["human", "agent"]);
 
 /** Meta's webhook `from` has no "+"; our customers.whatsapp_number is E.164. */
 export function normalizeWhatsAppNumber(from: string): string {
@@ -71,89 +79,49 @@ async function notifyOwnerIfNotAlreadyOpen(
   });
 }
 
-async function handleTakeoverRequest(
-  deps: InboundDeps,
-  customer: CustomerRow,
-  conversation: ConversationRow,
-  rawText: string,
-): Promise<InboundResult> {
-  await deps.messaging.setConversationMode(conversation.id, "HUMAN");
-
-  const activeBooking = await deps.getActiveBookingForCustomer(customer.id);
-  if (activeBooking) {
-    await deps.escalateBookingToHuman(activeBooking.id);
-  }
-
-  const title = `${customer.whatsappNumber} asked for a human`;
-  await notifyOwnerIfNotAlreadyOpen(
-    deps,
-    title,
-    rawText,
-    activeBooking?.id ?? null,
-  );
-
-  const reply = textReply(
-    "Thanks — a member of our team will be in touch with you shortly.",
-  );
-  await deps.messaging.storeMessage({
-    conversationId: conversation.id,
-    direction: "OUTBOUND",
-    sender: "owner",
-    body: replyBodyText(reply),
-  });
-
-  return { replies: [reply], notifyOwner: { title, body: rawText } };
-}
-
 /**
- * The core of /app/api/whatsapp/inbound: dedupe, customer/conversation
- * lookup, message storage, takeover check, and (otherwise) the AI reply.
- * Kept free of Next.js/Supabase specifics so it's unit-testable — see
- * inbound.test.ts.
+ * The shell around the bot: dedupe (race-safe on the unique
+ * whatsapp_message_id), customer/conversation lookup in one read, message
+ * storage, the HUMAN-mode passthrough, then handleTurn (lib/bot) and storing
+ * its replies tagged with the layer that produced them.
  */
 export async function handleInboundMessage(
   deps: InboundDeps,
   payload: InboundMessagePayload,
 ): Promise<InboundResult> {
-  const alreadySeen = await deps.messaging.findMessageByWhatsAppId(
-    payload.messageId,
-  );
-  if (alreadySeen) return { replies: [] };
-
-  const customer = await deps.messaging.findOrCreateCustomer(
-    normalizeWhatsAppNumber(payload.from),
-  );
-  const conversation = await deps.messaging.getOrCreateConversation(
-    customer.id,
-  );
+  const { customer, conversation } =
+    await deps.messaging.loadCustomerAndConversation(
+      normalizeWhatsAppNumber(payload.from),
+    );
   const inboundText = extractInboundText(payload);
 
-  await deps.messaging.storeMessage({
+  // Insert-first dedupe: a retried webhook hits the unique index and stops here.
+  const isNew = await deps.messaging.storeInboundIfNew({
     conversationId: conversation.id,
     direction: "INBOUND",
     sender: "customer",
     body: inboundText,
     whatsappMessageId: payload.messageId,
   });
-
-  const lowered = inboundText.trim().toLowerCase();
-  if (payload.type === "text" && (lowered === "stop" || lowered === "start")) {
-    await deps.messaging.setCustomerOptOut(customer.id, lowered === "stop");
-    const reply = textReply(
-      lowered === "stop"
-        ? "You won't receive reminders any more. Reply START to receive them again."
-        : "Reminders are back on. Thank you!",
-    );
-    await deps.messaging.storeMessage({
-      conversationId: conversation.id,
-      direction: "OUTBOUND",
-      sender: "ai",
-      body: replyBodyText(reply),
-    });
-    return { replies: [reply] };
-  }
+  if (!isNew) return { replies: [] };
 
   if (conversation.mode === "HUMAN") {
+    // A person owns this chat: only the STOP/START opt-out still works.
+    const command = payload.type === "text" ? matchCommand(inboundText) : null;
+    if (command?.name === "stop" || command?.name === "start") {
+      const optedOut = command.name === "stop";
+      await deps.messaging.setCustomerOptOut(customer.id, optedOut);
+      const t = getTemplates(customer.preferredLanguage ?? "en");
+      const reply = optedOut ? t.optedOut() : t.optedIn();
+      await deps.messaging.storeMessage({
+        conversationId: conversation.id,
+        direction: "OUTBOUND",
+        sender: "ai",
+        body: replyBodyText(reply),
+        handledBy: "command",
+      });
+      return { replies: [reply] };
+    }
     const activeBooking = await deps.getActiveBookingForCustomer(customer.id);
     await notifyOwnerIfNotAlreadyOpen(
       deps,
@@ -164,21 +132,30 @@ export async function handleInboundMessage(
     return { replies: [] };
   }
 
-  if (
-    payload.type === "text" &&
-    HUMAN_TAKEOVER_WORDS.has(inboundText.trim().toLowerCase())
-  ) {
-    return handleTakeoverRequest(deps, customer, conversation, inboundText);
-  }
+  const result = await deps.runBot(
+    conversation.id,
+    {
+      messageId: payload.messageId,
+      type: payload.type,
+      text: payload.text,
+      replyId: payload.replyId,
+    },
+    { customer, conversation },
+  );
 
-  const replies = await deps.runAgent(conversation.id);
-  for (const reply of replies) {
+  for (const reply of result.replies) {
     await deps.messaging.storeMessage({
       conversationId: conversation.id,
       direction: "OUTBOUND",
       sender: "ai",
       body: replyBodyText(reply),
+      handledBy: result.handledBy,
+      generatedBy: result.generatedBy ?? null,
     });
   }
-  return { replies };
+  return {
+    replies: result.replies,
+    notifyOwner: result.notifyOwner,
+    debug: { layer: result.handledBy, trace: result.trace },
+  };
 }

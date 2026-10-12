@@ -23,6 +23,13 @@ export default async function Knowledge() {
         topic: String(fd.get("topic")),
         question: String(fd.get("question")),
         answer: String(fd.get("answer")),
+        question_fr: String(fd.get("question_fr") || "") || null,
+        answer_fr: String(fd.get("answer_fr") || "") || null,
+        intent_key: String(fd.get("intent_key") || "") || null,
+        keywords: String(fd.get("keywords") || "")
+          .split(",")
+          .map((w) => w.trim())
+          .filter(Boolean),
         active: fd.get("active") === "on",
       },
       String(fd.get("id") || "") || null,
@@ -59,6 +66,27 @@ export default async function Knowledge() {
             rows={2}
             className={input}
           />
+          <input
+            name="question_fr"
+            placeholder="Question (French, optional)"
+            className={input}
+          />
+          <textarea
+            name="answer_fr"
+            placeholder="Answer (French) — sent to customers writing in French"
+            rows={2}
+            className={input}
+          />
+          <input
+            name="keywords"
+            placeholder="Trigger words, comma separated (any language) — e.g. credit card, carte bancaire"
+            className={input}
+          />
+          <input
+            name="intent_key"
+            placeholder="Intent key (optional): opening_hours, payment_methods, documents_required, fuel, mileage, cancellation, late_return, deposit, address"
+            className={input}
+          />
           <label className="text-sm">
             <input type="checkbox" name="active" defaultChecked /> Active
           </label>
@@ -79,6 +107,31 @@ export default async function Knowledge() {
               name="answer"
               defaultValue={k.answer}
               rows={2}
+              className={input}
+            />
+            <input
+              name="question_fr"
+              defaultValue={k.question_fr ?? ""}
+              placeholder="Question (French)"
+              className={input}
+            />
+            <textarea
+              name="answer_fr"
+              defaultValue={k.answer_fr ?? ""}
+              placeholder="Answer (French)"
+              rows={2}
+              className={input}
+            />
+            <input
+              name="keywords"
+              defaultValue={(k.keywords ?? []).join(", ")}
+              placeholder="Trigger words, comma separated"
+              className={input}
+            />
+            <input
+              name="intent_key"
+              defaultValue={k.intent_key ?? ""}
+              placeholder="Intent key"
               className={input}
             />
             <label className="text-sm">

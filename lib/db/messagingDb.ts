@@ -23,6 +23,9 @@ function mapCustomer(row: CustomerTableRow): CustomerRow {
     customerCode: row.customer_code,
     whatsappNumber: row.whatsapp_number,
     fullName: row.full_name,
+    preferredLanguage:
+      (row as { preferred_language?: "en" | "fr" | null }).preferred_language ??
+      null,
   };
 }
 
@@ -53,7 +56,64 @@ function mapMessage(row: MessageTableRow): MessageRow {
  * notifications for the WhatsApp inbound flow.
  */
 export function createSupabaseMessagingDb(client: Client): MessagingDb {
-  return {
+  const untyped = client as unknown as SupabaseClient;
+  const self: MessagingDb = {
+    async loadCustomerAndConversation(whatsappNumber) {
+      // One joined read in the common case (existing customer with a conversation).
+      const { data, error } = await client
+        .from("customers")
+        .select("*, conversations(*)")
+        .eq("whatsapp_number", whatsappNumber)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        const { conversations, ...customerRow } = data as CustomerTableRow & {
+          conversations: ConversationTableRow[] | ConversationTableRow | null;
+        };
+        const first = Array.isArray(conversations)
+          ? conversations[0]
+          : conversations;
+        const customer = mapCustomer(customerRow as CustomerTableRow);
+        if (first) return { customer, conversation: mapConversation(first) };
+        return {
+          customer,
+          conversation: await self.getOrCreateConversation(customer.id),
+        };
+      }
+      const customer = await self.findOrCreateCustomer(whatsappNumber);
+      return {
+        customer,
+        conversation: await self.getOrCreateConversation(customer.id),
+      };
+    },
+
+    async storeInboundIfNew(input) {
+      const { error } = await client.from("messages").insert({
+        conversation_id: input.conversationId,
+        direction: input.direction,
+        sender: input.sender,
+        body: input.body,
+        whatsapp_message_id: input.whatsappMessageId ?? null,
+      });
+      if (error) {
+        if (error.code === "23505") return false; // duplicate webhook delivery
+        throw error;
+      }
+      await client
+        .from("conversations")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("id", input.conversationId);
+      return true;
+    },
+
+    async setCustomerLanguage(customerId, language) {
+      const { error } = await untyped
+        .from("customers")
+        .update({ preferred_language: language })
+        .eq("id", customerId);
+      if (error) throw error;
+    },
+
     async findMessageByWhatsAppId(whatsappMessageId) {
       const { data, error } = await client
         .from("messages")
@@ -141,12 +201,15 @@ export function createSupabaseMessagingDb(client: Client): MessagingDb {
     },
 
     async storeMessage(input: StoreMessageInput) {
-      const { error } = await client.from("messages").insert({
+      const { error } = await untyped.from("messages").insert({
         conversation_id: input.conversationId,
         direction: input.direction,
         sender: input.sender,
         body: input.body,
         whatsapp_message_id: input.whatsappMessageId ?? null,
+        handled_by:
+          input.handledBy ?? (input.sender === "owner" ? "human" : null),
+        generated_by: input.generatedBy ?? null,
       });
       if (error) throw error;
 
@@ -216,4 +279,5 @@ export function createSupabaseMessagingDb(client: Client): MessagingDb {
       return count ?? 0;
     },
   };
+  return self;
 }

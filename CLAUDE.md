@@ -8,12 +8,13 @@ and an owner dashboard.
 
 ## Core rules — these apply to all work in this repo
 
-- **The database is the source of truth.** The AI chatbot never invents prices,
-  availability, or booking state — it calls backend API functions.
+- **Conversation logic is deterministic. An LLM is an optional last-resort fallback behind the provider interface; new conversational capabilities must be implemented with rules/templates first; every LLM call is logged and capped; the system must work with LLM_ENABLED=false.**
+- **The database is the source of truth.** The chatbot never invents prices,
+  availability, or booking state — it calls backend functions in `/lib/domain`.
 - **Business logic** (pricing, availability, booking validation, status transitions,
   vehicle assignment) lives in `/lib/domain` as pure, unit-tested TypeScript, exposed
   via Next.js route handlers under `/app/api`. n8n only orchestrates.
-- **The AI must never mark a payment as PAID.** Only an authenticated owner action can.
+- **The bot (and any LLM) must never mark a payment as PAID.** Only an authenticated owner action can.
 - **Document verification never auto-rejects.** Outcomes are `VERIFIED` or
   `NEEDS_REVIEW` only. A human rejects.
 - **Identity documents are sensitive:** private storage, signed short-lived URLs,
@@ -32,13 +33,14 @@ Plus `CANCELLED` and `NEEDS_HUMAN`, reachable from any active state.
 
 ## Stack
 
-| Layer                     | Choice                                                |
-| ------------------------- | ----------------------------------------------------- |
-| Frontend / API            | Next.js (App Router, TypeScript, Tailwind) on Vercel  |
-| Database / Auth / Storage | Supabase (Postgres, private Storage buckets)          |
-| WhatsApp orchestration    | n8n (thin — no business logic)                        |
-| AI                        | Claude API (conversation agent + document extraction) |
-| Messaging                 | WhatsApp Business Cloud API (Meta)                    |
+| Layer                     | Choice                                                                        |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| Frontend / API            | Next.js (App Router, TypeScript, Tailwind) on Vercel                          |
+| Database / Auth / Storage | Supabase (Postgres, private Storage buckets)                                  |
+| WhatsApp orchestration    | n8n (thin — no business logic)                                                |
+| Conversation              | Deterministic bot in `/lib/bot` (state machine, parsers, templates)           |
+| Optional LLM              | `/lib/llm` provider interface; any OpenAI-compatible endpoint; off by default |
+| Messaging                 | WhatsApp Business Cloud API (Meta)                                            |
 
 ## Open questions — update this file when the rental company answers
 
@@ -47,6 +49,32 @@ Plus `CANCELLED` and `NEEDS_HUMAN`, reachable from any active state.
 - [ ] Document retention period and who may view documents
 - [ ] Location fees and after-hours pickup rules
 - [ ] Which languages customers use most (English, French, Kreol)
+
+## Chatbot architecture (`/lib/bot`)
+
+`handleTurn(deps, conversationId, message)` runs these layers in order and stops at the first that
+handles the message:
+
+1. **Structured IDs** — button/list replies carry machine IDs (`lib/bot/ids.ts`: `menu:view_cars`,
+   `car:<id>`, `loc:<id>`, `confirm:yes`, `req:delay`, …). Routed directly, no text interpretation.
+2. **Global commands** — HUMAN, MENU, CANCEL, STOP/START, BACK/CHANGE, YES/NO, thanks, greetings
+   (`lib/bot/lexicon.ts`, English + French, case/accent-insensitive).
+3. **FAQ** — keyword/intent rules, then Postgres full-text search with a score threshold and a margin
+   over the runner-up; the stored answer is sent verbatim.
+4. **State machine** (`lib/bot/flow.ts`, step in `conversations.state.step`) — each step has
+   `prompt` / `parse` / `onValid`; parsers are deterministic (`lib/bot/parsers/*`). Max 2 re-prompts
+   per step, then buttons, then a human. Domain error codes map to templates (`actions.ts`).
+5. **Existing booking** — status card from the DB; delay/extension/pickup change/cancel create a
+   _change request_ for the owner and never edit the booking or promise approval.
+6. **LLM fallback** (`lib/bot/layers/fallback.ts`, only if `LLM_ENABLED=true`) — classify+extract or a
+   grounded knowledge answer. Output is re-validated by the same parsers; the model has no tools and
+   no write access. Max 1 call per turn, daily caps per conversation/customer, timeout, 24h cache.
+   Otherwise: "Sorry, I didn't understand" + menu + Talk to someone.
+
+All customer-facing text lives in typed templates (`lib/bot/templates/{en,fr}.ts`); French strings are
+listed in `NEEDS_NATIVE_REVIEW.md`. The only non-template text is a grounded KB answer.
+Bot code may only change bookings through the whitelisted `/lib/domain` functions (enforced by
+`lib/domain/paymentGuard.test.ts`). Knobs and behaviour changes: `MIGRATION_NOTES.md`.
 
 ## Environment variables
 
@@ -75,13 +103,12 @@ This repo currently runs as a client **demo** (no Meta/WhatsApp). Full runbook: 
 - `DEMO_MODE=true` turns on: the `/demo` web chat page, `/api/demo/*`, the DEMO badge and the
   "simulate documents" panel in the dashboard, and WhatsApp sends become "store the message only"
   (`lib/whatsapp/send.ts`). Without the flag, `/api/demo/*` and `/demo` return 404.
-- **Chatbot brain** is an n8n workflow (`n8n/demo-chatbot.json`, built by `npm run demo:n8n` from
-  `n8n/system-prompt.md`) with Gemini, calling `/api/demo/tools/<tool>`. These are thin wrappers over
-  the existing agent tool handlers (`lib/demo/tools.ts`). The customer comes from a fixed
-  `whatsapp_number` set by n8n, never from the model. No demo tool can set PAID (tested).
+- **Chatbot** is the same deterministic bot as production: `/demo` posts to `/api/demo/chat/send`, which
+  runs `handleInboundMessage` → `handleTurn` (no n8n, no LLM needed). The customer comes from a fixed
+  demo `whatsapp_number`. The bot cannot set PAID (tested).
 - **Mocked:** document upload and verification (`Simulate VERIFIED / NEEDS_REVIEW` in the booking page),
   owner replies (stored to `messages`, shown in `/demo`).
 - **Skipped:** Meta webhook/signature, templates, reminders/cron (`vercel.json` crons removed), real OCR,
-  e2e, hardening. The Claude agent in `lib/agent` is unused in the demo.
+  e2e, hardening.
 - **Scripts:** `npm run demo:user` (demo login), `demo:reset` (wipe and reseed with dates relative to now),
-  `demo:check` (smoke test), `demo:n8n` (regenerate the workflow).
+  `demo:check` (smoke test), `demo:e2e` (live end-to-end test).

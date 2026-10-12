@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { COMPANY_NAME } from "@/lib/agent/config";
+import { COMPANY_NAME } from "@/lib/bot/config";
 import { getDocumentsDeps } from "@/lib/documents/db";
 import { PRIVACY_NOTE } from "@/lib/documents/config";
 import { validateUploadToken } from "@/lib/domain/validateUploadToken";

@@ -47,7 +47,7 @@ test("owner login → simulated chat → document upload → approve → mark pa
     .update({ full_name: "E2E Tester" })
     .eq("id", customer!.id);
 
-  // 2. A booking waiting for documents (what the agent's confirm_booking leaves behind).
+  // 2. A booking waiting for documents (what the bot's confirmation leaves behind).
   const { data: vehicle } = await db
     .from("vehicles")
     .select("id, daily_price_rs")

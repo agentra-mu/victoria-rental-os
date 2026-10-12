@@ -19,9 +19,9 @@ async function check(
   }
 }
 
-/** Liveness + dependency check: database, WhatsApp token validity, Anthropic API reachability. */
+/** Liveness + dependency check: database and WhatsApp token validity; the optional LLM is reported but never fails the check. */
 export async function GET() {
-  const [database, whatsapp, anthropic] = await Promise.all([
+  const [database, whatsapp, llm] = await Promise.all([
     check(async () => {
       const { error } = await getServiceSupabase()
         .from("knowledge_base")
@@ -37,18 +37,24 @@ export async function GET() {
         throw new Error(`Graph API ${res.status} — token invalid or expired`);
     }),
     check(async () => {
-      const res = await fetch("https://api.anthropic.com/v1/models?limit=1", {
-        headers: {
-          "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
-          "anthropic-version": "2023-06-01",
+      // Optional: with LLM_ENABLED unset/false there is nothing to check.
+      if (process.env.LLM_ENABLED !== "true" || !process.env.LLM_BASE_URL)
+        return;
+      const res = await fetch(
+        `${process.env.LLM_BASE_URL.replace(/\/+$/, "")}/models`,
+        {
+          headers: process.env.LLM_API_KEY
+            ? { Authorization: `Bearer ${process.env.LLM_API_KEY}` }
+            : {},
+          signal: AbortSignal.timeout(4000),
         },
-      });
-      if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+      );
+      if (!res.ok) throw new Error(`LLM endpoint ${res.status}`);
     }),
   ]);
-  const ok = database.ok && whatsapp.ok && anthropic.ok;
+  const ok = database.ok && whatsapp.ok; // the LLM is optional
   return NextResponse.json(
-    { ok, database, whatsapp, anthropic },
+    { ok, database, whatsapp, llm },
     { status: ok ? 200 : 503 },
   );
 }

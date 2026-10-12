@@ -4,6 +4,7 @@
  * tomorrow. Used by scripts/reset-demo.ts. Seed data is entirely fictional.
  */
 import { randomUUID } from "node:crypto";
+import { KB_EXTRAS, LOCATION_ALIASES } from "./botSeedData.ts";
 import sharp from "sharp";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PERSONAS } from "../../lib/demo/personas.ts";
@@ -632,6 +633,8 @@ const WIPE_ORDER = [
   "audit_log",
   "booking_change_requests",
   "scheduled_messages",
+  "bot_turns",
+  "llm_calls",
   "document_verifications",
   "documents",
   "payments",
@@ -698,6 +701,7 @@ export async function resetDemo(db: SupabaseClient) {
           extra_fee_rs: l.fee,
           after_hours_allowed: l.afterHours,
           after_hours_fee_rs: l.afterFee,
+          aliases: LOCATION_ALIASES[l.name] ?? [],
           active: true,
         })),
       )
@@ -761,6 +765,7 @@ export async function resetDemo(db: SupabaseClient) {
         topic,
         question,
         answer,
+        ...(KB_EXTRAS[question] ?? {}),
         active: true,
       })),
     ),

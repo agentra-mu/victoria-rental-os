@@ -1,3 +1,4 @@
+import { invalidateBotCaches } from "@/lib/bot/cache";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { audit, requireAction, requireStaff } from "@/lib/dashboard/auth";
@@ -51,6 +52,7 @@ export default async function Fleet() {
       "vehicle",
       String(fd.get("registration")),
     );
+    invalidateBotCaches();
     revalidatePath("/dashboard/fleet");
   }
 

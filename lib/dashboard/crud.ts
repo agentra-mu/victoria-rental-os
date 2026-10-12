@@ -2,7 +2,16 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { audit, requireAction } from "@/lib/dashboard/auth";
 import { getServiceSupabase } from "@/lib/supabase/server";
+import { invalidateBotCaches } from "@/lib/bot/cache";
 import type { Permission } from "@/lib/domain/permissions";
+
+/** Tables the bot caches for a minute — an edit takes effect immediately on this instance. */
+const BOT_CACHED_TABLES = new Set([
+  "knowledge_base",
+  "locations",
+  "vehicles",
+  "vehicle_categories",
+]);
 
 /** Generic server-action helpers for the simple settings tables. */
 export async function upsertRow(
@@ -24,6 +33,7 @@ export async function upsertRow(
     table,
     id ?? undefined,
   );
+  if (BOT_CACHED_TABLES.has(table)) invalidateBotCaches();
   revalidatePath(path);
 }
 
@@ -40,5 +50,6 @@ export async function deleteRow(
     .eq("id", id);
   if (error) throw new Error(error.message);
   await audit(staff, `${table}.delete`, table, id);
+  if (BOT_CACHED_TABLES.has(table)) invalidateBotCaches();
   revalidatePath(path);
 }

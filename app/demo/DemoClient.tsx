@@ -1,7 +1,7 @@
 "use client";
 
-import "@n8n/chat/style.css";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Chat from "./Chat";
 
 type PersonaKey = "new" | "existing" | "custom";
 
@@ -33,15 +33,9 @@ interface TeamMessage {
 
 const CUSTOM_PATTERN = /^\+2305799\d{5}$/;
 
-function digitsOnly(value: string) {
-  return value.replace(/\D/g, "");
-}
-
 export default function DemoClient({
-  chatUrl,
   personas,
 }: {
-  chatUrl: string;
   personas: { newCustomer: string; existingCustomer: string };
 }) {
   const [persona, setPersona] = useState<PersonaKey>("new");
@@ -57,49 +51,6 @@ export default function DemoClient({
         : CUSTOM_PATTERN.test(custom)
           ? custom
           : "";
-
-  // --- the n8n chat widget -------------------------------------------------
-  useEffect(() => {
-    if (!number || !chatUrl) return;
-    let cancelled = false;
-    let app: { unmount?: () => void } | undefined;
-    (async () => {
-      const { createChat } = await import("@n8n/chat");
-      if (cancelled) return;
-      app = createChat({
-        webhookUrl: chatUrl,
-        target: "#demo-chat-target",
-        mode: "fullscreen",
-        showWelcomeScreen: false,
-        loadPreviousSession: false,
-        // Derived from the persona's number; the nonce makes "Reset" start fresh bot memory.
-        sessionId: `demo-${digitsOnly(number)}-${nonce}`,
-        chatSessionKey: `victoria-demo-session`,
-        // The widget sends no sessionId when loadPreviousSession is off, so n8n takes it from here.
-        metadata: {
-          whatsapp_number: number,
-          session_key: `demo-${digitsOnly(number)}-${nonce}`,
-        },
-        initialMessages: [
-          "Hi! 👋 Welcome to Victoria Car Rental. How can I help you today?",
-        ],
-        i18n: {
-          en: {
-            title: "Victoria Car Rental",
-            subtitle: "Typically replies in a few seconds",
-            footer: "",
-            getStarted: "New conversation",
-            inputPlaceholder: "Type a message…",
-            closeButtonTooltip: "Close",
-          },
-        },
-      }) as unknown as { unmount?: () => void };
-    })();
-    return () => {
-      cancelled = true;
-      app?.unmount?.();
-    };
-  }, [number, nonce, chatUrl]);
 
   const resetConversation = useCallback(async () => {
     if (!number) return;
@@ -280,13 +231,6 @@ export default function DemoClient({
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="flex min-w-0 flex-col gap-3">
-            {!chatUrl && (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">
-                <b>Chat not connected.</b> Set{" "}
-                <code>NEXT_PUBLIC_N8N_CHAT_URL</code> to your n8n Chat Trigger
-                webhook URL and redeploy.
-              </div>
-            )}
             {teamMessages.length > 0 && (
               <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm shadow-sm">
                 <div className="mb-1 text-xs font-semibold tracking-wide text-emerald-800 uppercase">
@@ -299,30 +243,7 @@ export default function DemoClient({
                 ))}
               </div>
             )}
-            <div
-              id="demo-chat-target"
-              className="h-[72vh] min-h-[460px] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-lg [&>div]:h-full"
-              style={
-                {
-                  "--chat--color-primary": "#059669",
-                  "--chat--color-primary-shade-50": "#047857",
-                  "--chat--color-primary-shade-100": "#065f46",
-                  "--chat--color-secondary": "#059669",
-                  "--chat--header--background": "#064e3b",
-                  "--chat--header--color": "#ffffff",
-                  "--chat--header-height": "auto",
-                  "--chat--message--bot--background": "#f4f4f5",
-                  "--chat--message--bot--color": "#18181b",
-                  "--chat--message--user--background": "#059669",
-                  "--chat--message--user--color": "#ffffff",
-                  "--chat--border-radius": "12px",
-                  "--chat--message--border-radius": "16px",
-                  "--chat--body--background": "#fafafa",
-                  "--chat--footer--background": "#ffffff",
-                  "--chat--input--font-size": "15px",
-                } as React.CSSProperties
-              }
-            />
+            <Chat key={`${number}-${nonce}`} number={number} />
           </div>
 
           <aside className="flex flex-col gap-5">

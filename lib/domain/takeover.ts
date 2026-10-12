@@ -51,9 +51,10 @@ export interface Summarizer {
 }
 
 /**
- * Back to AI. Summarises what the owner discussed since takeover (via the
- * injected summariser — Claude in production) so the agent's next turn can
- * pick up the thread.
+ * Back to the bot. Summarises what the owner discussed since takeover (via
+ * the injected summariser — the deterministic digest in lib/bot/digest.ts in
+ * production, no model involved). Transcript lines are
+ * `[ISO timestamp] Customer|Team: body`.
  */
 export async function returnToAI(
   client: SupabaseClient,
@@ -76,7 +77,8 @@ export async function returnToAI(
     if (msgs && msgs.length > 0) {
       const transcript = msgs
         .map(
-          (m) => `${m.sender === "customer" ? "Customer" : "Team"}: ${m.body}`,
+          (m) =>
+            `[${m.created_at}] ${m.sender === "customer" ? "Customer" : "Team"}: ${m.body}`,
         )
         .join("\n");
       try {

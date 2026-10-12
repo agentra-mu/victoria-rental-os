@@ -22,8 +22,11 @@ export function formatPriceRs(amountRs: number): string {
 }
 
 /** Renders a UTC instant in Indian/Mauritius local time (CLAUDE.md: store UTC, display local). */
-export function formatMauritiusDateTime(value: Date | string): string {
-  return new Intl.DateTimeFormat("en-GB", {
+export function formatMauritiusDateTime(
+  value: Date | string,
+  locale: "en-GB" | "fr-FR" = "en-GB",
+): string {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: TIMEZONE,
     day: "numeric",
     month: "short",
