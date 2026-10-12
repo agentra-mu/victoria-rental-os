@@ -375,8 +375,8 @@ const workflow = {
     },
     {
       parameters: {
-        sessionIdType: "customKey",
-        sessionKey: "={{ $('Chat Trigger').first().json.sessionId }}",
+        // Sub-nodes cannot resolve $('Chat Trigger') reliably; take the session id from the trigger.
+        sessionIdType: "fromInput",
         contextWindowLength: 15,
       },
       type: "@n8n/n8n-nodes-langchain.memoryBufferWindow",

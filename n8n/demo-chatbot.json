@@ -163,8 +163,7 @@
     },
     {
       "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Chat Trigger').first().json.sessionId }}",
+        "sessionIdType": "fromInput",
         "contextWindowLength": 15
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
