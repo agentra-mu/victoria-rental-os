@@ -6,8 +6,8 @@
 export interface KbExtras {
   intent_key: string | null;
   keywords: string[];
-  question_fr: string;
-  answer_fr: string;
+  question_fr: string | null;
+  answer_fr: string | null;
 }
 
 export const KB_EXTRAS: Record<string, KbExtras> = {

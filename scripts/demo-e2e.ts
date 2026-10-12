@@ -62,7 +62,7 @@ async function say(number: string, _session: string, text: string) {
           body: { text: string };
           action: {
             buttons?: { reply: { title: string } }[];
-            sections?: { rows: { title: string }[] }[];
+            sections?: { rows: { title: string; description?: string }[] }[];
           };
         };
       }[];
@@ -75,8 +75,9 @@ async function say(number: string, _session: string, text: string) {
         ? r.text
         : `${r.interactive?.body.text}\n[${[
             ...(r.interactive?.action.buttons?.map((b) => b.reply.title) ?? []),
-            ...(r.interactive?.action.sections?.[0]?.rows.map((x) => x.title) ??
-              []),
+            ...(r.interactive?.action.sections?.[0]?.rows.map(
+              (x) => x.title + (x.description ? ` (${x.description})` : ""),
+            ) ?? []),
           ].join(" | ")}]`,
     )
     .join("\n");

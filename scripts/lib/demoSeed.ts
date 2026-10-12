@@ -4,7 +4,7 @@
  * tomorrow. Used by scripts/reset-demo.ts. Seed data is entirely fictional.
  */
 import { randomUUID } from "node:crypto";
-import { KB_EXTRAS, LOCATION_ALIASES } from "./botSeedData.ts";
+import { KB_EXTRAS, LOCATION_ALIASES, type KbExtras } from "./botSeedData.ts";
 import sharp from "sharp";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PERSONAS } from "../../lib/demo/personas.ts";
@@ -322,6 +322,14 @@ const CUSTOMERS = [
   { key: "vikash", name: "Vikash Jhurry", phone: "+23057000009", email: null },
 ] as const;
 type CustKey = (typeof CUSTOMERS)[number]["key"];
+
+/** Bulk inserts need the same keys on every row. */
+const KB_NO_EXTRAS: KbExtras = {
+  keywords: [],
+  intent_key: null,
+  question_fr: null,
+  answer_fr: null,
+};
 
 const KNOWLEDGE: [string, string, string][] = [
   [
@@ -765,7 +773,7 @@ export async function resetDemo(db: SupabaseClient) {
         topic,
         question,
         answer,
-        ...(KB_EXTRAS[question] ?? {}),
+        ...(KB_EXTRAS[question] ?? KB_NO_EXTRAS),
         active: true,
       })),
     ),
