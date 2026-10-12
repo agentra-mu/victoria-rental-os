@@ -356,7 +356,8 @@ const workflow = {
             {
               id: "ai1",
               name: "sessionId",
-              value: "={{ $('Chat Trigger').first().json.sessionId }}",
+              value:
+                "={{ $('Chat Trigger').first().json.sessionId || $('Chat Trigger').first().json.metadata?.session_key || $('Chat Trigger').first().json.metadata?.whatsapp_number || 'demo' }}",
               type: "string",
             },
             {

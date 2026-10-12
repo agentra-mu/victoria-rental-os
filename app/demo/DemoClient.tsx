@@ -75,7 +75,11 @@ export default function DemoClient({
         // Derived from the persona's number; the nonce makes "Reset" start fresh bot memory.
         sessionId: `demo-${digitsOnly(number)}-${nonce}`,
         chatSessionKey: `victoria-demo-session`,
-        metadata: { whatsapp_number: number },
+        // The widget sends no sessionId when loadPreviousSession is off, so n8n takes it from here.
+        metadata: {
+          whatsapp_number: number,
+          session_key: `demo-${digitsOnly(number)}-${nonce}`,
+        },
         initialMessages: [
           "Hi! 👋 Welcome to Victoria Car Rental. How can I help you today?",
         ],
