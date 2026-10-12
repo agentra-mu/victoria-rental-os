@@ -183,157 +183,203 @@ export default function DemoClient({
   }, []);
   const isNew = (id: string) => baseline !== null && !baseline.has(id);
 
-  const tab =
-    "rounded-full px-3 py-1.5 text-sm font-medium transition-colors border";
+  const pill = (active: boolean) =>
+    `rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+      active
+        ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+        : "border-zinc-200 bg-white text-zinc-700 hover:border-emerald-300 hover:bg-emerald-50"
+    }`;
+  const card = "rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm";
+  const badge =
+    "rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-zinc-600 uppercase";
+  const newBadge =
+    "rounded-md bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-amber-950";
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 bg-white p-4 text-zinc-900 md:bg-transparent">
-      <header className="flex flex-wrap items-center gap-2">
-        <h1 className="mr-auto text-lg font-semibold">
-          Victoria Car Rental <span className="text-zinc-400">· chat demo</span>
-        </h1>
-        <a
-          href="/dashboard"
-          target="_blank"
-          rel="noreferrer"
-          className="rounded border px-3 py-1.5 text-sm hover:bg-zinc-100"
-        >
-          Open dashboard ↗
-        </a>
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-zinc-50 to-zinc-100 text-zinc-900">
+      <header className="border-b border-emerald-900/10 bg-emerald-900 text-white">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-xl">
+            🚗
+          </div>
+          <div className="mr-auto">
+            <h1 className="text-lg leading-tight font-semibold">
+              Victoria Car Rental
+            </h1>
+            <p className="text-xs text-emerald-100/80">
+              Customer chat · live demo
+            </p>
+          </div>
+          <a
+            href="/dashboard"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-50"
+          >
+            Open owner dashboard ↗
+          </a>
+        </div>
       </header>
 
-      <section className="flex flex-wrap items-center gap-2">
-        <button
-          className={`${tab} ${persona === "new" ? "border-emerald-600 bg-emerald-600 text-white" : "bg-white hover:bg-zinc-100"}`}
-          onClick={() => setPersona("new")}
-        >
-          New customer
-        </button>
-        <button
-          className={`${tab} ${persona === "existing" ? "border-emerald-600 bg-emerald-600 text-white" : "bg-white hover:bg-zinc-100"}`}
-          onClick={() => setPersona("existing")}
-        >
-          Existing customer · Vitz rental, due back tomorrow
-        </button>
-        <button
-          className={`${tab} ${persona === "custom" ? "border-emerald-600 bg-emerald-600 text-white" : "bg-white hover:bg-zinc-100"}`}
-          onClick={() => setPersona("custom")}
-        >
-          Custom number
-        </button>
-        {persona === "custom" && (
-          <input
-            value={custom}
-            onChange={(e) => setCustom(e.target.value.trim())}
-            aria-label="Custom WhatsApp number"
-            placeholder="+23057990001"
-            className={`w-40 rounded border px-2 py-1.5 text-sm ${CUSTOM_PATTERN.test(custom) ? "" : "border-red-400"}`}
-          />
-        )}
-        <button
-          onClick={resetConversation}
-          disabled={busy || !number}
-          className="ml-auto rounded border px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:opacity-50"
-        >
-          Reset conversation
-        </button>
-      </section>
-      <p className="-mt-2 text-xs text-zinc-500">
-        Chatting as <b>{number || "—"}</b>
-        {persona === "custom" &&
-          " (custom numbers must look like +23057990001)"}
-      </p>
-
-      <div className="grid flex-1 gap-4 md:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="flex min-w-0 flex-col gap-3">
-          {!chatUrl && (
-            <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">
-              <b>Chat not connected.</b> Set{" "}
-              <code>NEXT_PUBLIC_N8N_CHAT_URL</code> to your n8n Chat Trigger
-              webhook URL and redeploy.
-            </div>
-          )}
-          {teamMessages.length > 0 && (
-            <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm">
-              <div className="mb-1 text-xs font-semibold tracking-wide text-emerald-800 uppercase">
-                Message from the team
-              </div>
-              {teamMessages.map((m) => (
-                <p key={m.id} className="whitespace-pre-wrap">
-                  {m.body}
-                </p>
-              ))}
-            </div>
-          )}
-          <div
-            id="demo-chat-target"
-            className="h-[70vh] min-h-[420px] overflow-hidden rounded-xl border bg-white shadow-sm [&>div]:h-full"
-            style={{ ["--chat--color-primary" as string]: "#059669" }}
-          />
-        </div>
-
-        <aside className="flex flex-col gap-4">
-          <section className="rounded-xl border bg-white p-3 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold">
-              Owner notifications (live)
+      <main className="mx-auto max-w-6xl space-y-5 px-4 py-6">
+        <section className={card}>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <h2 className="mr-auto text-sm font-semibold text-zinc-500">
+              Chat as
             </h2>
-            {feed?.notifications.length === 0 && (
-              <p className="text-sm text-zinc-500">Nothing open.</p>
+            <button
+              onClick={resetConversation}
+              disabled={busy || !number}
+              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
+            >
+              ↺ Reset conversation
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className={pill(persona === "new")}
+              onClick={() => setPersona("new")}
+            >
+              New customer
+            </button>
+            <button
+              className={pill(persona === "existing")}
+              onClick={() => setPersona("existing")}
+            >
+              Existing customer
+              <span className="ml-1 hidden opacity-75 sm:inline">
+                · Vitz, due back tomorrow
+              </span>
+            </button>
+            <button
+              className={pill(persona === "custom")}
+              onClick={() => setPersona("custom")}
+            >
+              Custom number
+            </button>
+            {persona === "custom" && (
+              <input
+                value={custom}
+                onChange={(e) => setCustom(e.target.value.trim())}
+                aria-label="Custom WhatsApp number"
+                placeholder="+23057990001"
+                className={`w-44 rounded-lg border px-3 py-2 text-sm ${CUSTOM_PATTERN.test(custom) ? "border-zinc-200" : "border-red-400"}`}
+              />
             )}
-            <ul className="space-y-1.5">
-              {feed?.notifications.map((n) => (
-                <li
-                  key={n.id}
-                  className={`rounded border p-2 text-sm ${isNew(n.id) ? "border-amber-400 bg-amber-50" : ""}`}
-                >
-                  <span className="mr-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold">
-                    {n.type.replace(/_/g, " ")}
-                  </span>
-                  {isNew(n.id) && (
-                    <span className="mr-1 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold">
-                      NEW
-                    </span>
-                  )}
-                  {n.title}
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section className="rounded-xl border bg-white p-3 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold">
-              Latest bookings (live)
-            </h2>
-            <ul className="space-y-1.5">
-              {feed?.bookings.map((b) => (
-                <li
-                  key={b.id}
-                  className={`rounded border p-2 text-sm ${isNew(b.id) ? "border-amber-400 bg-amber-50" : ""}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <b>#{b.booking_number}</b>
-                    {isNew(b.id) && (
-                      <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold">
-                        NEW
+          </div>
+          <p className="mt-2 text-xs text-zinc-500">
+            Chatting as <b className="text-zinc-700">{number || "—"}</b>
+            {persona === "custom" &&
+              " (custom numbers must look like +23057990001)"}
+          </p>
+        </section>
+
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="flex min-w-0 flex-col gap-3">
+            {!chatUrl && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">
+                <b>Chat not connected.</b> Set{" "}
+                <code>NEXT_PUBLIC_N8N_CHAT_URL</code> to your n8n Chat Trigger
+                webhook URL and redeploy.
+              </div>
+            )}
+            {teamMessages.length > 0 && (
+              <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm shadow-sm">
+                <div className="mb-1 text-xs font-semibold tracking-wide text-emerald-800 uppercase">
+                  💬 Message from the team
+                </div>
+                {teamMessages.map((m) => (
+                  <p key={m.id} className="whitespace-pre-wrap">
+                    {m.body}
+                  </p>
+                ))}
+              </div>
+            )}
+            <div
+              id="demo-chat-target"
+              className="h-[72vh] min-h-[460px] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-lg [&>div]:h-full"
+              style={
+                {
+                  "--chat--color-primary": "#059669",
+                  "--chat--color-primary-shade-50": "#047857",
+                  "--chat--color-primary-shade-100": "#065f46",
+                  "--chat--color-secondary": "#059669",
+                  "--chat--header--background": "#064e3b",
+                  "--chat--header--color": "#ffffff",
+                  "--chat--header-height": "auto",
+                  "--chat--message--bot--background": "#f4f4f5",
+                  "--chat--message--bot--color": "#18181b",
+                  "--chat--message--user--background": "#059669",
+                  "--chat--message--user--color": "#ffffff",
+                  "--chat--border-radius": "12px",
+                  "--chat--message--border-radius": "16px",
+                  "--chat--body--background": "#fafafa",
+                  "--chat--footer--background": "#ffffff",
+                  "--chat--input--font-size": "15px",
+                } as React.CSSProperties
+              }
+            />
+          </div>
+
+          <aside className="flex flex-col gap-5">
+            <div className="flex items-center gap-2 px-1 text-xs font-semibold tracking-wide text-zinc-500 uppercase">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              What the owner sees · live
+            </div>
+            <section className={card}>
+              <h2 className="mb-3 text-sm font-semibold">🔔 Notifications</h2>
+              {feed?.notifications.length === 0 && (
+                <p className="text-sm text-zinc-500">Nothing open.</p>
+              )}
+              <ul className="space-y-2">
+                {feed?.notifications.map((n) => (
+                  <li
+                    key={n.id}
+                    className={`rounded-lg border p-2.5 text-sm ${isNew(n.id) ? "border-amber-400 bg-amber-50" : "border-zinc-100 bg-zinc-50"}`}
+                  >
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <span className={badge}>{n.type.replace(/_/g, " ")}</span>
+                      {isNew(n.id) && <span className={newBadge}>NEW</span>}
+                    </div>
+                    {n.title}
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <section className={card}>
+              <h2 className="mb-3 text-sm font-semibold">📋 Latest bookings</h2>
+              <ul className="space-y-2">
+                {feed?.bookings.map((b) => (
+                  <li
+                    key={b.id}
+                    className={`rounded-lg border p-2.5 text-sm ${isNew(b.id) ? "border-amber-400 bg-amber-50" : "border-zinc-100 bg-zinc-50"}`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <b>#{b.booking_number}</b>
+                      {isNew(b.id) && <span className={newBadge}>NEW</span>}
+                      <span className={`${badge} ml-auto`}>
+                        {b.status.replace(/_/g, " ")}
                       </span>
-                    )}
-                    <span className="ml-auto rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold">
-                      {b.status.replace(/_/g, " ")}
-                    </span>
-                  </div>
-                  <div className="text-zinc-600">
-                    {b.customers?.full_name ?? b.customers?.whatsapp_number} ·{" "}
-                    {b.vehicles
-                      ? `${b.vehicles.make} ${b.vehicles.model}`
-                      : "no car yet"}
-                    {b.total_rs != null &&
-                      ` · Rs ${b.total_rs.toLocaleString("en-US")}`}
-                    {` · ${b.payment_status}`}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </aside>
-      </div>
-    </main>
+                    </div>
+                    <div className="mt-1 text-xs text-zinc-600">
+                      {b.customers?.full_name ?? b.customers?.whatsapp_number} ·{" "}
+                      {b.vehicles
+                        ? `${b.vehicles.make} ${b.vehicles.model}`
+                        : "no car yet"}
+                      {b.total_rs != null &&
+                        ` · Rs ${b.total_rs.toLocaleString("en-US")}`}
+                      {` · ${b.payment_status}`}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </div>
   );
 }
