@@ -15,6 +15,7 @@ export interface OpenAICompatibleConfig {
   /** Send response_format: json_object. Turn off for servers that reject it. */
   jsonMode?: boolean;
   defaultTimeoutMs?: number;
+  extraHeaders?: Record<string, string>;
   fetchImpl?: typeof fetch;
 }
 
@@ -50,6 +51,7 @@ export function createOpenAICompatibleProvider(
         signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
+          ...(config.extraHeaders ?? {}),
           ...(config.apiKey
             ? { Authorization: `Bearer ${config.apiKey}` }
             : {}),

@@ -16,7 +16,8 @@
     "demo:user": "node --env-file=.env.local scripts/create-demo-user.ts",
     "demo:reset": "node --env-file=.env.local scripts/reset-demo.ts",
     "demo:check": "node --env-file=.env.local scripts/demo-check.ts",
-    "demo:e2e": "node --env-file=.env.local scripts/demo-e2e.ts"
+    "demo:e2e": "node --env-file=.env.local scripts/demo-e2e.ts",
+    "llm:check": "node --env-file=.env.local scripts/llm-check.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

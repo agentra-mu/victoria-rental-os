@@ -33,5 +33,7 @@ export function createLlmProviderFromEnv(
     model: env.LLM_MODEL,
     jsonMode: env.LLM_JSON_MODE !== "false",
     defaultTimeoutMs: env.LLM_TIMEOUT_MS ? Number(env.LLM_TIMEOUT_MS) : 4000,
+    // OpenRouter shows these in its dashboard/rankings; harmless elsewhere.
+    extraHeaders: { "X-Title": "Victoria Car Rental" },
   });
 }
