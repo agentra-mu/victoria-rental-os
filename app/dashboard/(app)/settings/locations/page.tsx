@@ -176,7 +176,9 @@ export default async function Locations() {
 
   return (
     <>
-      <h1 className="mb-3 text-xl font-semibold">Locations</h1>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-zinc-900">
+        Locations
+      </h1>
       <Card title="Add location">
         <LocationForm action={save} />
       </Card>

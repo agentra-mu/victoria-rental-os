@@ -29,7 +29,9 @@ export default async function Audit({
   ]);
   return (
     <>
-      <h1 className="mb-3 text-xl font-semibold">Audit log</h1>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-zinc-900">
+        Audit log
+      </h1>
       <form className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
         <select name="user" defaultValue={q.user ?? ""} className={input}>
           <option value="">Any user</option>

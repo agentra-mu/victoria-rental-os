@@ -117,7 +117,7 @@ export default async function Inbox({
               <Link
                 key={k}
                 href={`?f=${k}`}
-                className={`rounded border px-2 py-1 ${f === k ? "bg-black text-white" : "bg-white"}`}
+                className={`rounded border px-2 py-1 ${f === k ? "bg-teal-700 text-white" : "bg-white"}`}
               >
                 {label}
               </Link>

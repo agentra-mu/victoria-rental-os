@@ -5,6 +5,7 @@ import { getServiceSupabase } from "@/lib/supabase/server";
 import {
   Badge,
   Card,
+  PageHeader,
   Stat,
   fmtDateTime,
   localDateKey,
@@ -103,34 +104,46 @@ export default async function Home({
   return (
     <>
       <AutoRefresh seconds={15} />
+      <PageHeader
+        title="Overview"
+        subtitle={new Date().toLocaleDateString("en-GB", {
+          timeZone: "Indian/Mauritius",
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        })}
+      />
       {denied && (
-        <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">
+        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           You don&apos;t have permission for that page.
         </p>
       )}
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <Stat label="Today's pickups" value={pickupsToday} />
-        <Stat label="Today's returns" value={returnsToday} />
-        <Stat label="Upcoming bookings" value={rows.length} />
-        <Stat label="Cars available now" value={available} />
-        <Stat label="Cars out" value={out} />
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <Stat tone="teal" label="Today's pickups" value={pickupsToday} />
+        <Stat tone="sky" label="Today's returns" value={returnsToday} />
+        <Stat tone="violet" label="Upcoming bookings" value={rows.length} />
+        <Stat tone="teal" label="Cars available now" value={available} />
+        <Stat tone="amber" label="Cars out" value={out} />
       </div>
 
       <Card title={`Needs attention (${notes?.length ?? 0})`}>
         <ul className="flex flex-col gap-2">
           {(notes ?? []).map((n) => (
-            <li key={n.id} className="rounded border p-3">
-              <div className="flex items-center gap-2">
+            <li
+              key={n.id}
+              className="rounded-lg border border-l-4 border-zinc-200 border-l-amber-400 bg-amber-50/40 p-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge value={n.type} />
-                <span className="font-medium">{n.title}</span>
+                <span className="font-medium text-zinc-900">{n.title}</span>
               </div>
               {n.body && (
                 <div className="mt-1 text-sm text-zinc-600">{n.body}</div>
               )}
-              <div className="mt-2 flex gap-3 text-sm">
+              <div className="mt-2 flex gap-4 text-sm font-medium">
                 {n.booking_id && (
                   <Link
-                    className="underline"
+                    className="text-teal-700 hover:underline"
                     href={`/dashboard/bookings/${n.booking_id}`}
                   >
                     Open booking
@@ -138,13 +151,17 @@ export default async function Home({
                 )}
                 <form action={resolve}>
                   <input type="hidden" name="id" value={n.id} />
-                  <button className="underline">Resolve</button>
+                  <button className="text-zinc-500 hover:text-zinc-900 hover:underline">
+                    Resolve
+                  </button>
                 </form>
               </div>
             </li>
           ))}
           {(notes ?? []).length === 0 && (
-            <li className="text-sm text-zinc-500">Nothing needs attention.</li>
+            <li className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+              All clear. Nothing needs attention.
+            </li>
           )}
         </ul>
       </Card>
@@ -155,9 +172,9 @@ export default async function Home({
             <li key={b.id}>
               <Link
                 href={`/dashboard/bookings/${b.id}`}
-                className="block rounded border p-3 hover:bg-zinc-50"
+                className="block rounded-lg border border-zinc-200 p-3 hover:border-teal-300 hover:bg-teal-50/40"
               >
-                <div className="font-medium">
+                <div className="font-medium text-zinc-900">
                   #{b.booking_number} ·{" "}
                   {b.customers?.full_name ?? b.customers?.whatsapp_number}
                 </div>
@@ -168,7 +185,7 @@ export default async function Home({
                   · {fmtDateTime(b.pickup_at)} → {fmtDateTime(b.return_at)}
                   {b.total_rs != null && ` · Rs ${b.total_rs}`}
                 </div>
-                <div className="mt-1 flex gap-1">
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   <Badge value={b.status} />
                   <Badge value={b.payment_status} />
                   <Badge value={`DOCS ${b.document_status}`} />
@@ -176,6 +193,9 @@ export default async function Home({
               </Link>
             </li>
           ))}
+          {rows.length === 0 && (
+            <li className="text-sm text-zinc-500">No upcoming bookings.</li>
+          )}
         </ul>
       </Card>
     </>

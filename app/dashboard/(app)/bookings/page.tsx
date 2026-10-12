@@ -53,7 +53,9 @@ export default async function BookingsPage({
 
   return (
     <>
-      <h1 className="mb-3 text-xl font-semibold">Bookings</h1>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-zinc-900">
+        Bookings
+      </h1>
       <form className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         <input
           name="q"

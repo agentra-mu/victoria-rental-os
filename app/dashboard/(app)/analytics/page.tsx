@@ -79,7 +79,9 @@ export default async function Analytics({
 
   return (
     <>
-      <h1 className="mb-3 text-xl font-semibold">Analytics</h1>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-zinc-900">
+        Analytics
+      </h1>
       <form className="mb-4 flex flex-wrap gap-2">
         <input
           type="date"

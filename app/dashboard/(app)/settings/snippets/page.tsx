@@ -51,7 +51,9 @@ export default async function Snippets() {
 
   return (
     <>
-      <h1 className="mb-3 text-xl font-semibold">Quick replies</h1>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-zinc-900">
+        Quick replies
+      </h1>
       <Card>
         <form action={addSnippet} className="grid gap-2">
           <input
@@ -86,7 +88,7 @@ export default async function Snippets() {
           ))}
         </ul>
       </Card>
-      <h1 className="mb-3 text-xl font-semibold">
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-zinc-900">
         WhatsApp templates (approved by Meta)
       </h1>
       <p className="mb-2 text-sm text-zinc-600">

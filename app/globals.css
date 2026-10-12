@@ -24,3 +24,51 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Staff dashboard: always light. Its surfaces are light, so the OS dark-mode
+   text colour above would render near-white text on white cards. */
+.dash {
+  color-scheme: light;
+  background: #f6f7f9;
+  color: #18181b;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+@layer components {
+  .dash input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  .dash select,
+  .dash textarea {
+    background: #fff;
+    color: #18181b;
+    border-color: #d4d4d8;
+    border-radius: 0.5rem;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
+  }
+  .dash input::placeholder,
+  .dash textarea::placeholder {
+    color: #a1a1aa;
+  }
+  .dash input:focus,
+  .dash select:focus,
+  .dash textarea:focus {
+    outline: none;
+    border-color: #0d9488;
+    box-shadow: 0 0 0 3px rgb(13 148 136 / 0.18);
+  }
+  .dash a,
+  .dash button {
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      border-color 0.15s;
+  }
+  .dash button:not(:disabled),
+  .dash summary {
+    cursor: pointer;
+  }
+  .dash button:disabled {
+    opacity: 0.5;
+  }
+}

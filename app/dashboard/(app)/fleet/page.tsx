@@ -69,7 +69,9 @@ export default async function Fleet() {
 
   return (
     <>
-      <h1 className="mb-3 text-xl font-semibold">Fleet</h1>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-zinc-900">
+        Fleet
+      </h1>
       <div className="mb-4 overflow-x-auto rounded-lg border bg-white">
         <table className="w-full text-left text-sm">
           <thead className="bg-zinc-50 text-xs text-zinc-500">

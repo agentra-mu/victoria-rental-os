@@ -35,7 +35,9 @@ export default async function Knowledge() {
 
   return (
     <>
-      <h1 className="mb-3 text-xl font-semibold">Knowledge base</h1>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-zinc-900">
+        Knowledge base
+      </h1>
       <Card title="Add entry">
         <form action={save} className="grid gap-2">
           <input

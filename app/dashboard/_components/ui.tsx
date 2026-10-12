@@ -22,28 +22,54 @@ export const fmtDate = (s: string | null | undefined) =>
       })
     : "—";
 
+const GREEN = "bg-emerald-50 text-emerald-700 ring-emerald-600/20";
+const AMBER = "bg-amber-50 text-amber-800 ring-amber-600/25";
+const RED = "bg-red-50 text-red-700 ring-red-600/20";
+const BLUE = "bg-sky-50 text-sky-700 ring-sky-600/20";
 const BADGE: Record<string, string> = {
-  PAID: "bg-green-100 text-green-800",
-  VERIFIED: "bg-green-100 text-green-800",
-  CONFIRMED: "bg-green-100 text-green-800",
-  COMPLETED: "bg-green-100 text-green-800",
-  UNPAID: "bg-amber-100 text-amber-800",
-  NEEDS_REVIEW: "bg-amber-100 text-amber-800",
-  PENDING_DOCUMENTS: "bg-amber-100 text-amber-800",
-  PENDING: "bg-amber-100 text-amber-800",
-  NEEDS_HUMAN: "bg-red-100 text-red-800",
-  REJECTED: "bg-red-100 text-red-800",
-  CANCELLED: "bg-zinc-200 text-zinc-700",
-  PICKED_UP: "bg-blue-100 text-blue-800",
+  PAID: GREEN,
+  VERIFIED: GREEN,
+  CONFIRMED: GREEN,
+  COMPLETED: GREEN,
+  UNPAID: AMBER,
+  NEEDS_REVIEW: AMBER,
+  PENDING_DOCUMENTS: AMBER,
+  PENDING: AMBER,
+  NEEDS_HUMAN: RED,
+  REJECTED: RED,
+  CANCELLED: "bg-zinc-100 text-zinc-600 ring-zinc-500/20",
+  PICKED_UP: BLUE,
 };
 
 export function Badge({ value }: { value: string }) {
   return (
     <span
-      className={`rounded px-2 py-0.5 text-xs font-medium ${BADGE[value] ?? "bg-zinc-100 text-zinc-700"}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${BADGE[value] ?? "bg-zinc-50 text-zinc-600 ring-zinc-500/20"}`}
     >
       {value.replace(/_/g, " ")}
     </span>
+  );
+}
+
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          {title}
+        </h1>
+        {subtitle && <p className="mt-0.5 text-sm text-zinc-500">{subtitle}</p>}
+      </div>
+      {actions}
+    </div>
   );
 }
 
@@ -55,24 +81,48 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section className="mb-4 rounded-lg border bg-white p-4">
-      {title && <h2 className="mb-2 font-semibold">{title}</h2>}
+    <section className="mb-5 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+      {title && (
+        <h2 className="mb-3 text-sm font-semibold tracking-wide text-zinc-900">
+          {title}
+        </h2>
+      )}
       {children}
     </section>
   );
 }
 
 export const btn =
-  "rounded border bg-white px-3 py-2 text-sm hover:bg-zinc-50 active:bg-zinc-100";
+  "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 active:bg-zinc-100";
 export const btnPrimary =
-  "rounded bg-black px-3 py-2 text-sm text-white hover:bg-zinc-800";
-export const input = "w-full rounded border p-2 text-sm";
+  "rounded-lg bg-teal-700 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-teal-800 active:bg-teal-900";
+export const input = "w-full rounded-lg border p-2 text-sm";
 
-export function Stat({ label, value }: { label: string; value: ReactNode }) {
+const TONE = {
+  teal: "text-teal-700 bg-teal-50",
+  sky: "text-sky-700 bg-sky-50",
+  amber: "text-amber-700 bg-amber-50",
+  violet: "text-violet-700 bg-violet-50",
+  zinc: "text-zinc-700 bg-zinc-100",
+} as const;
+
+export function Stat({
+  label,
+  value,
+  tone = "zinc",
+}: {
+  label: string;
+  value: ReactNode;
+  tone?: keyof typeof TONE;
+}) {
   return (
-    <div className="rounded-lg border bg-white p-3">
-      <div className="text-2xl font-semibold">{value}</div>
-      <div className="text-xs text-zinc-500">{label}</div>
+    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="text-xs font-medium text-zinc-500">{label}</div>
+      <div
+        className={`mt-2 inline-block min-w-10 rounded-lg px-2.5 py-0.5 text-2xl font-semibold tabular-nums ${TONE[tone]}`}
+      >
+        {value}
+      </div>
     </div>
   );
 }

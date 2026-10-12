@@ -66,7 +66,9 @@ export default async function Staff() {
 
   return (
     <>
-      <h1 className="mb-3 text-xl font-semibold">Staff</h1>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-zinc-900">
+        Staff
+      </h1>
       <Card title="Invite staff member">
         <form action={invite} className="grid grid-cols-2 gap-2">
           <input name="name" placeholder="Name" required className={input} />

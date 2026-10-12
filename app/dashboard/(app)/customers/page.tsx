@@ -24,7 +24,9 @@ export default async function Customers({
   const { data } = await query;
   return (
     <>
-      <h1 className="mb-3 text-xl font-semibold">Customers</h1>
+      <h1 className="mb-5 text-2xl font-semibold tracking-tight text-zinc-900">
+        Customers
+      </h1>
       <form className="mb-3 flex gap-2">
         <input
           name="q"

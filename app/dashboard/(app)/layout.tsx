@@ -1,4 +1,5 @@
 import Link from "next/link";
+import NavLinks from "../_components/NavLinks";
 import { redirect } from "next/navigation";
 import { getAuthClient, requireStaff } from "@/lib/dashboard/auth";
 import { can, type Permission } from "@/lib/domain/permissions";
@@ -26,31 +27,35 @@ export default async function AppLayout({
     redirect("/dashboard/login");
   }
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="sticky top-0 z-10 border-b bg-white">
-        <nav className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto p-2 text-sm">
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
+        <nav className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto px-4 py-2.5">
+          <Link
+            href="/dashboard"
+            className="mr-3 flex items-center gap-2 whitespace-nowrap"
+          >
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal-700 text-sm font-bold text-white">
+              V
+            </span>
+            <span className="hidden font-semibold tracking-tight text-zinc-900 sm:inline">
+              Victoria Car Rental
+            </span>
+          </Link>
           {process.env.DEMO_MODE === "true" && (
-            <span className="rounded bg-amber-400 px-2 py-1 text-xs font-bold tracking-wide whitespace-nowrap text-amber-950">
+            <span className="mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold tracking-wider whitespace-nowrap text-amber-800">
               DEMO
             </span>
           )}
-          {NAV.filter((n) => !n.perm || can(staff, n.perm)).map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className="rounded px-3 py-2 whitespace-nowrap hover:bg-zinc-100"
-            >
-              {n.label}
-            </Link>
-          ))}
-          <form action={signOut} className="ml-auto">
-            <button className="rounded px-3 py-2 whitespace-nowrap text-zinc-500 hover:bg-zinc-100">
-              {staff.name} · Sign out
+          <NavLinks items={NAV.filter((n) => !n.perm || can(staff, n.perm))} />
+          <form action={signOut} className="ml-auto pl-2">
+            <button className="rounded-lg px-3 py-1.5 text-sm whitespace-nowrap text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900">
+              <span className="font-medium text-zinc-700">{staff.name}</span> ·
+              Sign out
             </button>
           </form>
         </nav>
       </header>
-      <div className="mx-auto max-w-6xl p-4">{children}</div>
+      <div className="mx-auto max-w-6xl px-4 py-6">{children}</div>
     </div>
   );
 }
