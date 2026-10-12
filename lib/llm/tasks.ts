@@ -30,6 +30,11 @@ export const classifySchema = z.object({
       car: z.string().max(80).optional(),
       location: z.string().max(80).optional(),
       name: z.string().max(80).optional(),
+      pickup_datetime: z.string().max(80).optional(),
+      return_datetime: z.string().max(80).optional(),
+      duration: z.string().max(40).optional(),
+      pickup_location: z.string().max(80).optional(),
+      dropoff_location: z.string().max(80).optional(),
     })
     .default({}),
   language: z.enum(["en", "fr"]),
@@ -51,8 +56,8 @@ export async function classifyAndExtract(
 Allowed intents: ${CLASSIFY_INTENTS.join(", ")}.
 Hints about known words: ${ctx.lexiconHints.join("; ")}.
 
-Return JSON: {"intent": <one allowed intent, or "unknown">, "extracted": {"dates": [<up to 2 date/time phrases copied from the message>], "car": <car name phrase>, "location": <place phrase>, "name": <person's full name>}, "language": "en" | "fr", "confidence": <0..1>}
-Only include extracted fields that literally appear in the message. Use "unknown" when unsure.
+Return JSON: {"intent": <one allowed intent, or "unknown">, "extracted": {"car": <car name phrase>, "pickup_datetime": <pickup date and/or time phrase>, "return_datetime": <return date and/or time phrase>, "duration": <rental length phrase such as "3 days">, "pickup_location": <place phrase>, "dropoff_location": <place phrase>, "name": <person's full name>}, "language": "en" | "fr", "confidence": <0..1>}
+A single message may fill several fields ("Vitz tomorrow 9am for 3 days from the airport"). Copy phrases LITERALLY as the customer wrote them; never convert, translate, calculate or invent. Only include fields that literally appear in the message. Use intent "view_cars" for any wish to rent or see cars. Use "unknown" when unsure.
 
 <customer_message>
 ${text}

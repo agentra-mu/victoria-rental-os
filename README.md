@@ -89,7 +89,7 @@ Business Cloud API.
 ## Optional LLM (off by default)
 
 The chatbot is rule-based and complete without any model (`LLM_ENABLED=false`). If you want a model to
-help with free text the rules didn't understand, point the provider interface (`/lib/llm`) at any
+understand free text the rules couldn't read (whole sentences, odd phrasing, other wording), point the provider interface (`/lib/llm`) at any
 **OpenAI-compatible** endpoint — nothing vendor-specific is used (no tool calling; plain JSON output
 validated with zod, one automatic retry).
 
@@ -104,7 +104,7 @@ LLM_BASE_URL=http://localhost:11434/v1            LLM_MODEL=qwen2.5:7b      LLM_
 ```
 
 Free tiers have **rate limits** (requests per minute/day) and may change or disappear, which is why the
-bot caps itself: at most 1 call per message, 6 per conversation and 15 per customer per day, a 4 s
+bot caps itself: at most 1 call per message, 30 per conversation and 60 per customer per day, a 4 s
 timeout, and a 24 h cache; when a cap, timeout or error hits, the customer simply gets the menu and
 "Talk to someone". Every call is logged in `llm_calls` and visible under Dashboard → Analytics.
 Some small models ignore JSON mode — set `LLM_JSON_MODE=false` if the server rejects `response_format`.

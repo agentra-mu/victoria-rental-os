@@ -1,55 +1,13 @@
-import {
-  classifyAndExtract,
-  answerFromKnowledge,
-  validateGroundedAnswer,
-} from "@/lib/llm/tasks";
+import { answerFromKnowledge, validateGroundedAnswer } from "@/lib/llm/tasks";
 import { escalateToHuman } from "../actions";
 import type { TurnCtx } from "../context";
-import { applyOutcome, runCurrentStep } from "../engine";
 import type { Handled } from "../handled";
-import { INTENT_KEYS, looksLikeQuestion } from "../lexicon";
-import type { Step } from "../types";
-import type { WhatsAppReply } from "@/lib/whatsapp/replies";
-import type { StepInput } from "../flow";
+import { looksLikeQuestion } from "../lexicon";
 import { entryAnswer } from "./faq";
-import { routeIntent } from "./intents";
+import { hasSlotSignals } from "../signals";
+import { understand } from "./understand";
 
 const MIN_CONFIDENCE = 0.6;
-
-/**
- * Values the model pulled out of the message go through the SAME step
- * parsers the customer's own typing would (fuzzy car match, date parser,
- * location aliases, name rules). The model's wording is never trusted or sent.
- * Returns the replies of the last step that accepted a value, or null.
- */
-async function feedExtracted(
-  ctx: TurnCtx,
-  extracted: {
-    dates?: string[];
-    car?: string;
-    location?: string;
-    name?: string;
-  },
-): Promise<WhatsAppReply[] | null> {
-  const queue: Partial<Record<Step, string | undefined>> = {
-    CHOOSE_CAR: extracted.car,
-    PICKUP_DATETIME: extracted.dates?.[0],
-    RETURN_DATETIME: extracted.dates?.[1],
-    PICKUP_LOCATION: extracted.location,
-    FULL_NAME: extracted.name,
-  };
-  let last: WhatsAppReply[] | null = null;
-  for (let i = 0; i < 4; i++) {
-    const candidate = queue[ctx.state.step];
-    if (!candidate) break;
-    queue[ctx.state.step] = undefined;
-    const input: StepInput = { kind: "text", text: candidate };
-    const ran = await runCurrentStep(ctx, input, "llm_fallback");
-    if (!ran || !("handled" in ran)) break;
-    last = ran.handled.replies;
-  }
-  return last;
-}
 
 /** "Sorry, I didn't understand" + menu buttons; two in a row (configurable) hands the chat to a person. */
 export async function unknownReply(
@@ -91,7 +49,7 @@ export async function llmFallback(
   const llm = ctx.llm;
   if (!llm || !llm.enabled) return unknownReply(ctx, "fallback:disabled");
 
-  if (looksLikeQuestion(text)) {
+  if (looksLikeQuestion(text) && !(await hasSlotSignals(ctx, text))) {
     const hits = await ctx.catalog.searchKnowledge(text, ctx.lang, 5);
     const all = await ctx.catalog.listKnowledge();
     const offered = hits
@@ -125,44 +83,7 @@ export async function llmFallback(
     }
   }
 
-  const out = await classifyAndExtract(llm, text, {
-    step: ctx.state.step,
-    lexiconHints: INTENT_KEYS.slice(),
-  });
-  if (!out.ok) return unknownReply(ctx, `llm:${out.reason}`);
-  const r = out.value;
-  ctx.parsed.llmIntent = r.intent;
-  ctx.parsed.llmConfidence = r.confidence;
-  if (r.confidence < MIN_CONFIDENCE)
-    return unknownReply(ctx, "llm:low_confidence");
-
-  if (r.intent === "unknown") return unknownReply(ctx, "llm:unknown");
-  if (r.intent === "talk_human") {
-    const esc = await escalateToHuman(ctx, text);
-    return {
-      replies: esc.replies,
-      handledBy: "llm_fallback",
-      matched: "llm:talk_human",
-      notifyOwner: esc.notifyOwner,
-    };
-  }
-  if (r.intent === "menu") {
-    ctx.state.unknownStreak = 0;
-    return {
-      replies: await applyOutcome(ctx, { replies: [], next: "MENU" }),
-      handledBy: "llm_fallback",
-      matched: "llm:menu",
-    };
-  }
-  const routed = await routeIntent(ctx, r.intent, text, "llm_fallback");
-  if (routed) {
-    ctx.state.unknownStreak = 0;
-    const chained = await feedExtracted(ctx, r.extracted);
-    return {
-      ...routed,
-      replies: chained ?? routed.replies,
-      matched: `llm:${routed.matched}${chained ? "+extracted" : ""}`,
-    };
-  }
-  return unknownReply(ctx, "llm:unroutable");
+  const understood = await understand(ctx, text);
+  if (understood) return understood;
+  return unknownReply(ctx, `llm:${ctx.parsed.llmReason ?? "unknown"}`);
 }

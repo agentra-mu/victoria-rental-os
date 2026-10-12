@@ -47,6 +47,8 @@ export interface ChangeSummary {
 export interface Templates {
   menu(): WhatsAppReply;
   unknown(): WhatsAppReply;
+  /** Echo of what was understood from one free-text message, before asking for what's missing. */
+  gotIt(items: string[]): WhatsAppReply;
   stuck(): WhatsAppReply;
   humanHandoff(): WhatsAppReply;
   humanAlreadyNotified(): WhatsAppReply;

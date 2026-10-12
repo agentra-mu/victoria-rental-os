@@ -122,6 +122,7 @@ export const fr: Templates = {
       "Menu",
       MENU_ROWS,
     ),
+  gotIt: (items) => textReply(`Bien noté ✅ ${items.join(" · ")}`),
   stuck: () =>
     buttonsReply(
       "J'ai du mal à comprendre. Vous pouvez revenir en arrière, recommencer depuis le menu ou parler à quelqu'un de notre équipe.",

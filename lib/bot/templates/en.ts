@@ -96,6 +96,7 @@ export const en: Templates = {
       "Menu",
       MENU_ROWS,
     ),
+  gotIt: (items) => textReply(`Got it ✅ ${items.join(" · ")}`),
   stuck: () =>
     buttonsReply(
       "I'm having trouble understanding. You can go back, start again from the menu, or talk to someone on our team.",

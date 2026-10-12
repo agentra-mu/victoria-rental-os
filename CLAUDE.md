@@ -66,10 +66,12 @@ handles the message:
    per step, then buttons, then a human. Domain error codes map to templates (`actions.ts`).
 5. **Existing booking** — status card from the DB; delay/extension/pickup change/cancel create a
    _change request_ for the owner and never edit the booking or promise approval.
-6. **LLM fallback** (`lib/bot/layers/fallback.ts`, only if `LLM_ENABLED=true`) — classify+extract or a
-   grounded knowledge answer. Output is re-validated by the same parsers; the model has no tools and
-   no write access. Max 1 call per turn, daily caps per conversation/customer, timeout, 24h cache.
-   Otherwise: "Sorry, I didn't understand" + menu + Talk to someone.
+6. **LLM understanding** (`lib/bot/layers/understand.ts`, only if `LLM_ENABLED=true`) — reads free-form
+   text the rules couldn't: classifies it and extracts details ("Vitz tomorrow 9am for 3 days from the
+   airport"), which are pushed through the SAME step parsers; or gives a grounded knowledge answer. The
+   model never writes customer text (except a grounded KB answer), has no tools and no write access.
+   Max 1 call per turn, daily caps per conversation/customer, timeout, 24h cache. Without a model the
+   rules read whole sentences themselves (`lib/bot/signals.ts`) and otherwise show the menu.
 
 All customer-facing text lives in typed templates (`lib/bot/templates/{en,fr}.ts`); French strings are
 listed in `NEEDS_NATIVE_REVIEW.md`. The only non-template text is a grounded KB answer.

@@ -42,8 +42,8 @@ function num(name: string, fallback: number): number {
 
 export function loadGatewayConfig(): GatewayConfig {
   return {
-    perConversationPerDay: num("LLM_MAX_CALLS_PER_CONVERSATION_PER_DAY", 6),
-    perCustomerPerDay: num("LLM_MAX_CALLS_PER_CUSTOMER_PER_DAY", 15),
+    perConversationPerDay: num("LLM_MAX_CALLS_PER_CONVERSATION_PER_DAY", 30),
+    perCustomerPerDay: num("LLM_MAX_CALLS_PER_CUSTOMER_PER_DAY", 60),
     maxInputChars: num("LLM_MAX_INPUT_CHARS", 1500),
     timeoutMs: num("LLM_TIMEOUT_MS", 4000),
     cacheTtlMs: num("LLM_CACHE_TTL_MS", 24 * 60 * 60 * 1000),

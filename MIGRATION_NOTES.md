@@ -78,8 +78,11 @@ send each returned reply (text / buttons / list) → optional owner ping. No bra
   independent writes (state, language, turn log) run in parallel. Live round-trip timing could not be measured (the hosted Supabase host
   was unreachable from this environment); the tests assert < 300 ms of server time with in-memory data.
 - KB French text is two columns (`question_fr`, `answer_fr`) rather than a translations table (only two languages).
-- The LLM is never called from inside a booking step's parse failure (a failed parse is always a templated re-prompt) — this keeps
-  prompt-injection at free-text steps inert and the happy path at zero calls. It is reached from the menu-level steps and for questions.
+- **Update (LLM "understands everything" mode):** when `LLM_ENABLED=true` the model is also consulted when a booking step cannot read
+  the customer's answer (but never for "valid yet not allowed" cases such as a past date), and for rich booking sentences at the menu.
+  Its output is only labelled phrases that go through the same parsers, so injection stays inert. With no model, `lib/bot/signals.ts`
+  reads whole sentences by rules (car, date range, duration, place) and fills several steps at once. Expect roughly one call per
+  free-form message; simple answers (button taps, "tomorrow 9am", "airport") still cost nothing.
 - Extra tables/columns beyond the brief: `bot_turns` (per-turn layer, timing, parsed values, unrecognised text), `llm_calls.customer_id`,
   `messages.generated_by`.
 

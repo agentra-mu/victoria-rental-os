@@ -6,6 +6,13 @@ import { failStep, hasParser, runCurrentStep } from "./engine";
 import { enterStep } from "./flow";
 import type { Handled } from "./handled";
 import { looksLikeQuestion, matchIntent } from "./lexicon";
+import {
+  isUnderstandable,
+  startAndFill,
+  understand,
+} from "./layers/understand";
+import { tokens } from "./text";
+import { hasSlotSignals, ruleExtract } from "./signals";
 import { handleCommand } from "./layers/commands";
 import { answerWith, findByKeyword, findBySearch } from "./layers/faq";
 import { llmFallback } from "./layers/fallback";
@@ -92,6 +99,11 @@ async function handleText(ctx: TurnCtx, text: string): Promise<Handled> {
         if (routed) return routed;
       }
       if (!ran.failed.noRetry) {
+        // Rules couldn't read the answer: let the model try to understand free-form phrasing.
+        if (!question && isUnderstandable(ran.failed.reason)) {
+          const understood = await understand(ctx, text);
+          if (understood) return understood;
+        }
         const kw = await findByKeyword(ctx, text);
         if (kw) return answerWith(ctx, kw.entry, `faq:${kw.via}`);
         if (question) {
@@ -109,6 +121,31 @@ async function handleText(ctx: TurnCtx, text: string): Promise<Handled> {
   }
 
   const intent = matchIntent(text);
+  // "I want the Vitz tomorrow 9am for 3 days from the airport": read the whole sentence for every
+  // detail at once (the model if enabled, otherwise the rules) instead of only opening the car list.
+  const bookingStart =
+    !intent || intent === "view_cars" || intent === "check_availability";
+  if (
+    bookingStart &&
+    tokens(text).length >= 3 &&
+    (await hasSlotSignals(ctx, text))
+  ) {
+    if (ctx.llm?.enabled) {
+      const understood = await understand(ctx, text);
+      if (understood) return understood;
+    }
+    const slots = await ruleExtract(ctx, text);
+    if (slots) {
+      const filled = await startAndFill(
+        ctx,
+        slots,
+        intent ?? "view_cars",
+        "state_machine",
+        "rules",
+      );
+      if (filled) return filled;
+    }
+  }
   if (intent) {
     const routed = await routeIntent(ctx, intent, text);
     if (routed) return routed;
