@@ -206,9 +206,10 @@ const connections: Record<string, unknown> = {
   "Skip AI?": {
     main: [
       [{ node: "Team reply", type: "main", index: 0 }],
-      [{ node: "AI Agent", type: "main", index: 0 }],
+      [{ node: "Agent input", type: "main", index: 0 }],
     ],
   },
+  "Agent input": { main: [[{ node: "AI Agent", type: "main", index: 0 }]] },
   "AI Agent": { main: [[{ node: "Prepare reply", type: "main", index: 0 }]] },
   "Prepare reply": {
     main: [[{ node: "Store reply", type: "main", index: 0 }]],
@@ -348,9 +349,37 @@ const workflow = {
       name: "Team reply",
     },
     {
+      // The memory sub-node reads `sessionId` from the agent's input item, so put it there.
+      parameters: {
+        assignments: {
+          assignments: [
+            {
+              id: "ai1",
+              name: "sessionId",
+              value: "={{ $('Chat Trigger').first().json.sessionId }}",
+              type: "string",
+            },
+            {
+              id: "ai2",
+              name: "chatInput",
+              value: "={{ $('Chat Trigger').first().json.chatInput }}",
+              type: "string",
+            },
+          ],
+        },
+        includeOtherFields: true,
+        options: {},
+      },
+      type: "n8n-nodes-base.set",
+      typeVersion: 3.4,
+      position: [780, 380],
+      id: "agent-input",
+      name: "Agent input",
+    },
+    {
       parameters: {
         promptType: "define",
-        text: "={{ $('Chat Trigger').first().json.chatInput }}",
+        text: "={{ $json.chatInput }}",
         agent: "toolsAgent",
         options: { systemMessage, maxIterations: 8 },
       },
