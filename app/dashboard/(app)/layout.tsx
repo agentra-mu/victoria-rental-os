@@ -29,6 +29,11 @@ export default async function AppLayout({
     <div className="min-h-screen bg-zinc-50">
       <header className="sticky top-0 z-10 border-b bg-white">
         <nav className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto p-2 text-sm">
+          {process.env.DEMO_MODE === "true" && (
+            <span className="rounded bg-amber-400 px-2 py-1 text-xs font-bold tracking-wide whitespace-nowrap text-amber-950">
+              DEMO
+            </span>
+          )}
           {NAV.filter((n) => !n.perm || can(staff, n.perm)).map((n) => (
             <Link
               key={n.href}

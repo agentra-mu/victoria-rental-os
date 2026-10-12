@@ -138,6 +138,8 @@ export interface DomainDb {
   getVehicleById(id: string): Promise<VehicleRow | null>;
   listVehicleCategories(): Promise<VehicleCategoryRow[]>;
   getLocationById(id: string): Promise<LocationRow | null>;
+  /** Active locations, ordered by name — for presenting choices and resolving a spoken location name. */
+  listActiveLocations(): Promise<LocationRow[]>;
   /** Subset of the given vehicle ids that have a conflicting active booking. */
   findOverlappingVehicleIds(filter: OverlapFilter): Promise<Set<string>>;
   getBookingById(id: string): Promise<BookingRow | null>;

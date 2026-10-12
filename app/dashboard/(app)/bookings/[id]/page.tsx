@@ -18,6 +18,7 @@ import {
 import ConfirmButton from "../../../_components/ConfirmButton";
 import ConversationPanel from "../../../_components/ConversationPanel";
 import * as A from "./actions";
+import * as Demo from "./demoActions";
 
 export const dynamic = "force-dynamic";
 
@@ -243,6 +244,26 @@ export default async function BookingPage({
         </div>
 
         <div>
+          {process.env.DEMO_MODE === "true" &&
+            b.status === "PENDING_DOCUMENTS" && (
+              <Card title="DEMO: simulate document upload & verification">
+                <p className="mb-2 text-sm text-zinc-600">
+                  Stands in for the customer uploading their passport and
+                  permit. Demo mode only: real verification is not part of this
+                  demo.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <form action={Demo.simulateVerifiedAction}>
+                    <input type="hidden" name="id" value={id} />
+                    <button className={btnPrimary}>Simulate VERIFIED</button>
+                  </form>
+                  <form action={Demo.simulateNeedsReviewAction}>
+                    <input type="hidden" name="id" value={id} />
+                    <button className={btn}>Simulate NEEDS_REVIEW</button>
+                  </form>
+                </div>
+              </Card>
+            )}
           <Card title="Documents">
             <div className="mb-2">
               <Badge value={b.document_status} />

@@ -67,3 +67,21 @@ before a component counts as done.
 `docs/build-guide.md` is the full build guide. `prompts/` holds one Claude Code
 prompt per component, numbered in the order they should be run. Run one component
 per session.
+
+## Demo mode
+
+This repo currently runs as a client **demo** (no Meta/WhatsApp). Full runbook: `docs/DEMO.md`.
+
+- `DEMO_MODE=true` turns on: the `/demo` web chat page, `/api/demo/*`, the DEMO badge and the
+  "simulate documents" panel in the dashboard, and WhatsApp sends become "store the message only"
+  (`lib/whatsapp/send.ts`). Without the flag, `/api/demo/*` and `/demo` return 404.
+- **Chatbot brain** is an n8n workflow (`n8n/demo-chatbot.json`, built by `npm run demo:n8n` from
+  `n8n/system-prompt.md`) with Gemini, calling `/api/demo/tools/<tool>`. These are thin wrappers over
+  the existing agent tool handlers (`lib/demo/tools.ts`). The customer comes from a fixed
+  `whatsapp_number` set by n8n, never from the model. No demo tool can set PAID (tested).
+- **Mocked:** document upload and verification (`Simulate VERIFIED / NEEDS_REVIEW` in the booking page),
+  owner replies (stored to `messages`, shown in `/demo`).
+- **Skipped:** Meta webhook/signature, templates, reminders/cron (`vercel.json` crons removed), real OCR,
+  e2e, hardening. The Claude agent in `lib/agent` is unused in the demo.
+- **Scripts:** `npm run demo:user` (demo login), `demo:reset` (wipe and reseed with dates relative to now),
+  `demo:check` (smoke test), `demo:n8n` (regenerate the workflow).

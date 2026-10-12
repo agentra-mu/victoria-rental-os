@@ -54,9 +54,19 @@ function stripLeadingPlus(phone: string): string {
   return phone.replace(/^\+/, "");
 }
 
+/**
+ * Demo mode has no Meta connection: nothing is sent, the message is only stored
+ * (by the callers), and the web chat picks it up by polling. The "demo-push-"
+ * id prefix is how /api/demo/chat/messages recognises these.
+ */
+export const DEMO_PUSH_ID_PREFIX = "demo-push-";
+
 async function postToGraphApi(
   body: { to: string } & Record<string, unknown>,
 ): Promise<string> {
+  if (process.env.DEMO_MODE === "true") {
+    return `${DEMO_PUSH_ID_PREFIX}${crypto.randomUUID()}`;
+  }
   const env = requireEnv(process.env, [
     "WHATSAPP_TOKEN",
     "WHATSAPP_PHONE_NUMBER_ID",

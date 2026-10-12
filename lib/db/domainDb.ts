@@ -185,6 +185,16 @@ export function createSupabaseDomainDb(client: Client): DomainDb {
       return data ? mapLocation(data) : null;
     },
 
+    async listActiveLocations() {
+      const { data, error } = await client
+        .from("locations")
+        .select("*")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return (data ?? []).map(mapLocation);
+    },
+
     async findOverlappingVehicleIds(filter: OverlapFilter) {
       if (filter.vehicleIds.length === 0) return new Set();
 

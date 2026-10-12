@@ -186,3 +186,32 @@ describe("send.ts", () => {
     expect(messaging.messages).toHaveLength(0);
   });
 });
+
+describe("DEMO_MODE", () => {
+  it("stores the message without calling Meta", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    process.env.DEMO_MODE = "true";
+    try {
+      const stored: unknown[] = [];
+      const id = await sendTextMessage(
+        {
+          conversationId: "c1",
+          sender: "owner",
+          messaging: {
+            storeMessage: async (m: unknown) => void stored.push(m),
+          } as never,
+        },
+        "+23057000001",
+        "hello",
+      );
+      expect(id).toMatch(/^demo-push-/);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(stored).toEqual([
+        expect.objectContaining({ body: "hello", whatsappMessageId: id }),
+      ]);
+    } finally {
+      delete process.env.DEMO_MODE;
+      fetchSpy.mockRestore();
+    }
+  });
+});

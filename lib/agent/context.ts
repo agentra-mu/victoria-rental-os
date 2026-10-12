@@ -65,7 +65,7 @@ export async function describeActiveBooking(
   };
 }
 
-function formatTodayText(now: Date): string {
+export function formatTodayText(now: Date): string {
   const formatted = new Intl.DateTimeFormat("en-GB", {
     timeZone: TIMEZONE,
     weekday: "long",

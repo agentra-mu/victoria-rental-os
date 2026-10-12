@@ -75,6 +75,12 @@ export function createFakeDb(seed: FakeDbSeed = {}) {
       return locations.get(id) ?? null;
     },
 
+    async listActiveLocations() {
+      return Array.from(locations.values())
+        .filter((l) => l.active)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    },
+
     async findOverlappingVehicleIds(filter: OverlapFilter) {
       const result = new Set<string>();
       for (const booking of bookings.values()) {

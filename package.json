@@ -13,10 +13,15 @@
     "evals": "vitest run --config vitest.evals.config.mts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "demo:user": "node --env-file=.env.local scripts/create-demo-user.ts",
+    "demo:reset": "node --env-file=.env.local scripts/reset-demo.ts",
+    "demo:n8n": "node scripts/build-n8n-workflow.ts && prettier --write n8n/demo-chatbot.json",
+    "demo:check": "node --env-file=.env.local scripts/demo-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
+    "@n8n/chat": "^1.41.4",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.1",
     "file-type": "^22.1.1",
