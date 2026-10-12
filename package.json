@@ -17,7 +17,8 @@
     "demo:user": "node --env-file=.env.local scripts/create-demo-user.ts",
     "demo:reset": "node --env-file=.env.local scripts/reset-demo.ts",
     "demo:n8n": "node scripts/build-n8n-workflow.ts && prettier --write n8n/demo-chatbot.json",
-    "demo:check": "node --env-file=.env.local scripts/demo-check.ts"
+    "demo:check": "node --env-file=.env.local scripts/demo-check.ts",
+    "demo:e2e": "node --env-file=.env.local scripts/demo-e2e.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

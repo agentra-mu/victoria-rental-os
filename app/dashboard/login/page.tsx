@@ -32,6 +32,12 @@ export default async function LoginPage({
             Victoria Car Rental
           </h1>
           <p className="text-sm text-zinc-500">Staff sign in</p>
+          {process.env.DEMO_MODE === "true" && (
+            <p className="mt-2 text-xs text-teal-700">
+              Demo: the email is filled in. Run <code>npm run demo:user</code>{" "}
+              for a fresh password.
+            </p>
+          )}
         </div>
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           {error && (
@@ -45,6 +51,11 @@ export default async function LoginPage({
               <input
                 name="email"
                 type="email"
+                defaultValue={
+                  process.env.DEMO_MODE === "true"
+                    ? "demo@victoria-demo.example"
+                    : undefined
+                }
                 autoComplete="username"
                 className="border p-2.5 font-normal"
                 required
