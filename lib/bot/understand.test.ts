@@ -30,6 +30,7 @@ describe("understanding free-form messages with the model enabled", () => {
     const text = textOf(r.replies);
     expect(text).toMatch(/Got it ✅/);
     expect(text).toMatch(/Toyota Vitz/);
+    expect(text).toMatch(/return .*16 Oct 9:00 am/);
     expect(h.state().step).toBe("DROPOFF_LOCATION");
     expect(h.state().vehicleId).toBe("veh-vitz");
     const [draft] = h.bookings();

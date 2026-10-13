@@ -6,7 +6,7 @@ import { applyOutcome, runCurrentStep } from "../engine";
 import type { StepInput } from "../flow";
 import type { Handled } from "../handled";
 import { INTENT_KEYS } from "../lexicon";
-import { dateLabel, timeLabel } from "../parsers/localTime";
+import { dateLabel, fromInstant, timeLabel } from "../parsers/localTime";
 import { startBookingFlow } from "../startFlow";
 import type { Step } from "../types";
 import { routeIntent } from "./intents";
@@ -61,10 +61,16 @@ function acceptedLabel(ctx: TurnCtx, step: Step): string | null {
       return p.pickupDate
         ? `pickup ${dateLabel(p.pickupDate, ctx.lang)}${p.pickupTime ? ` ${timeLabel(p.pickupTime, ctx.lang)}` : ""}`
         : null;
-    case "RETURN_DATETIME":
+    case "RETURN_DATETIME": {
+      // Once both dates are complete the pending values are cleared, so read the saved instant.
+      if (typeof p_.returnAt === "string") {
+        const r = fromInstant(p_.returnAt);
+        return `return ${dateLabel(r.date, ctx.lang)} ${timeLabel(r.time, ctx.lang)}`;
+      }
       return p.returnDate
         ? `return ${dateLabel(p.returnDate, ctx.lang)}${p.returnTime ? ` ${timeLabel(p.returnTime, ctx.lang)}` : ""}`
         : null;
+    }
     case "PICKUP_LOCATION":
     case "DROPOFF_LOCATION":
       return typeof p_.location === "string" ? p_.location : null;

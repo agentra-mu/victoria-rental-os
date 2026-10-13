@@ -96,14 +96,14 @@ validated with zod, one automatic retry).
 ```bash
 # Free tier, hosted (examples — check each provider's current free models and limits):
 LLM_ENABLED=true  LLM_PROVIDER=openai_compatible
-LLM_BASE_URL=https://openrouter.ai/api/v1         LLM_MODEL=meta-llama/llama-3.3-70b-instruct:free   LLM_API_KEY=sk-or-...
+LLM_BASE_URL=https://openrouter.ai/api/v1         LLM_MODEL=google/gemini-2.5-flash-lite   LLM_API_KEY=sk-or-...
 # or Groq:   LLM_BASE_URL=https://api.groq.com/openai/v1                       LLM_MODEL=llama-3.1-8b-instant
 # or Gemini: LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai   LLM_MODEL=gemini-2.0-flash
 # Local (Ollama, llama.cpp server, vLLM) — no key, no limits, runs on your own machine:
 LLM_BASE_URL=http://localhost:11434/v1            LLM_MODEL=qwen2.5:7b      LLM_API_KEY=
 ```
 
-Free tiers have **rate limits** (requests per minute/day) and may change or disappear, which is why the
+On OpenRouter the free `:free` models come and go and are often rate-limited (HTTP 429); a cheap paid model such as `google/gemini-2.5-flash-lite` (about $0.10 per million input tokens) costs a fraction of a cent per conversation and is far more reliable. Free tiers have **rate limits** (requests per minute/day) and may change or disappear, which is why the
 bot caps itself: at most 1 call per message, 30 per conversation and 60 per customer per day, a 4 s
 timeout, and a 24 h cache; when a cap, timeout or error hits, the customer simply gets the menu and
 "Talk to someone". Every call is logged in `llm_calls` and visible under Dashboard → Analytics.
